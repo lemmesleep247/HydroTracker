@@ -13,7 +13,7 @@
   <a href="#features">Features</a> •
   <a href="#screenshots">Screenshots</a> •
   <a href="#installation">Installation</a> •
-  <a href="#technical-details">Technical Details</a> •
+  <a href="#contributing">Contributing</a> •
   <a href="#license">License</a>
 </p>
 
@@ -139,6 +139,12 @@ You can find all of the source inside the **settings page** of the app or from [
     <img src="https://img.shields.io/badge/PayPal-00457C?style=for-the-badge&logo=paypal&logoColor=white" alt="PayPal" />
   </a>
 </div>
+
+---
+
+## Contributing
+
+We welcome contributions! Please read our [CONTRIBUTING.md](CONTRIBUTING.md) guide before opening an issue or pull request.
 
 ---
 
