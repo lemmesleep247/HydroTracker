@@ -45,8 +45,7 @@ import java.time.temporal.WeekFields
 @Composable
 fun HistoryScreen(
     waterIntakeRepository: WaterIntakeRepository,
-    themePreferences: ThemePreferences = ThemePreferences(),
-    onNavigateBack: () -> Unit = {}
+    themePreferences: ThemePreferences = ThemePreferences()
 ) {
     // State for different time periods
     var selectedPeriod by remember { mutableStateOf(TimePeriod.WEEKLY) }
@@ -78,14 +77,6 @@ fun HistoryScreen(
                         text = "History & Statistics",
                         fontWeight = FontWeight.Bold
                     )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
-                    }
                 }
             )
         }

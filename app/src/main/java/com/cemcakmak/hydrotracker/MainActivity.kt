@@ -9,12 +9,11 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.result.ActivityResultLauncher
 import androidx.compose.animation.ContentTransform
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -23,11 +22,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.ExperimentalTextApi
-import androidx.compose.ui.unit.IntOffset
+import androidx.compose.animation.core.tween
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation3.runtime.NavKey
+
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.ui.NavDisplay
@@ -54,19 +53,12 @@ import com.cemcakmak.hydrotracker.notifications.*
 import com.cemcakmak.hydrotracker.ui.theme.HydroTrackerTheme
 import com.cemcakmak.hydrotracker.health.HealthConnectManager
 
-// Predictive-back gesture animation tuning
-private const val PB_OUTGOING_SCALE = 0.85f // how much the current screen shrinks (1.0 = no shrink, 0.7 = aggressive)
-private const val PB_OUTGOING_SLIDE_FRACTION = 0.15f    // lateral drift toward the swipe edge, as a fraction of screen width
-private const val PB_INCOMING_INITIAL_SCALE = 0.95f // previous screen starts at this scale, grows to 1.0 (1.0 = no growth)
-private const val PB_SPRING_DAMPING = 1.0f  // 1.0 = critically damped (no bounce); <1.0 adds bounce
-private const val PB_SPRING_STIFFNESS = 1600f   // higher = snappier; Material 3's default effects spec is 1600
-
-private val TOP_LEVEL_TAB_KEYS: Set<NavKey> = setOf(
-    NavigationRoutes.Home,
-    NavigationRoutes.History,
-    NavigationRoutes.Profile,
-    NavigationRoutes.Settings,
-)
+// Navigation animation tuning
+private const val PUSH_DURATION = 300
+private const val POP_DURATION = 300
+private const val PB_OUTGOING_SCALE = 0.85f
+private const val PB_OUTGOING_SLIDE_FRACTION = 0.15f
+private const val PB_INCOMING_INITIAL_SCALE = 0.95f
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class, ExperimentalTextApi::class)
 class MainActivity : ComponentActivity() {
@@ -214,42 +206,41 @@ fun HydroTrackerApp(
                 currentKey = currentKey,
                 userProfileImagePath = userProfile?.profileImagePath
             ) { padding ->
+                val popBackStack = {
+                    if (backStack.size > 1) backStack.removeLastOrNull()
+                }
+
                 NavDisplay(
                     backStack = backStack,
-                    onBack = { backStack.removeLastOrNull() },
-                    modifier = Modifier.padding(padding),
-                    predictivePopTransitionSpec = { swipeEdge ->
-                        val floatSpring = spring<Float>(
-                            dampingRatio = PB_SPRING_DAMPING,
-                            stiffness = PB_SPRING_STIFFNESS,
+                    onBack = popBackStack,
+                    transitionSpec = {
+                        ContentTransform(
+                            targetContentEnter = fadeIn(tween(PUSH_DURATION)) +
+                                slideInHorizontally(tween(PUSH_DURATION)) { it / 4 },
+                            initialContentExit = fadeOut(tween(PUSH_DURATION)) +
+                                slideOutHorizontally(tween(PUSH_DURATION)) { -it / 4 },
                         )
-                        val outgoingKey = backStack.lastOrNull()
-                        if (outgoingKey in TOP_LEVEL_TAB_KEYS) {
-                            // No animation when popping a top-level tab back to Home.
-                            ContentTransform(
-                                targetContentEnter = EnterTransition.None,
-                                initialContentExit = ExitTransition.None,
-                            )
-                        } else {
-                            val slideDirection = if (swipeEdge == NavigationEvent.EDGE_LEFT) 1 else -1
-                            val offsetSpring = spring<IntOffset>(
-                                dampingRatio = PB_SPRING_DAMPING,
-                                stiffness = PB_SPRING_STIFFNESS,
-                            )
-                            ContentTransform(
-                                targetContentEnter = fadeIn(animationSpec = floatSpring) +
-                                    scaleIn(
-                                        initialScale = PB_INCOMING_INITIAL_SCALE,
-                                        animationSpec = floatSpring,
-                                    ),
-                                initialContentExit = scaleOut(
-                                    targetScale = PB_OUTGOING_SCALE,
-                                    animationSpec = floatSpring,
-                                ) + slideOutHorizontally(animationSpec = offsetSpring) { width ->
-                                    (slideDirection * width * PB_OUTGOING_SLIDE_FRACTION).toInt()
-                                },
-                            )
-                        }
+                    },
+                    popTransitionSpec = {
+                        ContentTransform(
+                            targetContentEnter = fadeIn(tween(POP_DURATION)) +
+                                scaleIn(tween(POP_DURATION), initialScale = 0.95f),
+                            initialContentExit = fadeOut(tween(POP_DURATION)) +
+                                scaleOut(tween(POP_DURATION), targetScale = 0.90f),
+                        )
+                    },
+                    predictivePopTransitionSpec = { swipeEdge ->
+                        val slideDirection = if (swipeEdge == NavigationEvent.EDGE_LEFT) 1 else -1
+                        ContentTransform(
+                            targetContentEnter = fadeIn(tween(POP_DURATION)) +
+                                scaleIn(tween(POP_DURATION), initialScale = PB_INCOMING_INITIAL_SCALE),
+                            initialContentExit = scaleOut(
+                                tween(POP_DURATION),
+                                targetScale = PB_OUTGOING_SCALE,
+                            ) + slideOutHorizontally(tween(POP_DURATION)) { width ->
+                                (slideDirection * width * PB_OUTGOING_SLIDE_FRACTION).toInt()
+                            },
+                        )
                     },
                     entryProvider = entryProvider {
                         entry<NavigationRoutes.Onboarding> {
@@ -285,9 +276,7 @@ fun HydroTrackerApp(
                             HistoryScreen(
                                 waterIntakeRepository = waterIntakeRepository,
                                 themePreferences = themePreferences
-                            ) {
-                                backStack.removeLastOrNull()
-                            }
+                            )
                         }
 
                         entry<NavigationRoutes.Profile> {
@@ -295,8 +284,7 @@ fun HydroTrackerApp(
                                 ProfileScreen(
                                     userProfile = it,
                                     userRepository = userRepository,
-                                    waterIntakeRepository = waterIntakeRepository,
-                                    onNavigateBack = { backStack.removeLastOrNull() }
+                                    waterIntakeRepository = waterIntakeRepository
                                 )
                             } ?: LoadingScreen()
                         }
@@ -336,7 +324,7 @@ fun HydroTrackerApp(
                                     }
                                 },
                                 healthConnectPermissionLauncher = healthConnectPermissionLauncher,
-                                onNavigateBack = { backStack.removeLastOrNull() },
+                                onNavigateBack = popBackStack,
                                 onNavigateToOnboarding = {
                                     backStack.apply {
                                         clear()
@@ -366,42 +354,42 @@ fun HydroTrackerApp(
                                 onColorSourceChange = themeViewModel::setColorSource,
                                 onDarkModeChange = themeViewModel::updateDarkModePreference,
                                 onPureBlackChange = themeViewModel::updatePureBlackPreference,
-                                onNavigateBack = { backStack.removeLastOrNull() }
+                                onNavigateBack = popBackStack
                             )
                         }
                         entry<NavigationRoutes.SettingsDisplay> {
-                            PlaceholderScreen(title = "Display & Locale", onNavigateBack = { backStack.removeLastOrNull() })
+                            PlaceholderScreen(title = "Display & Locale", onNavigateBack = popBackStack)
                         }
                         entry<NavigationRoutes.SettingsHydration> {
-                            PlaceholderScreen(title = "Hydration & Health", onNavigateBack = { backStack.removeLastOrNull() })
+                            PlaceholderScreen(title = "Hydration & Health", onNavigateBack = popBackStack)
                         }
                         entry<NavigationRoutes.SettingsContainers> {
-                            PlaceholderScreen(title = "Quick Add Customization", onNavigateBack = { backStack.removeLastOrNull() })
+                            PlaceholderScreen(title = "Quick Add Customization", onNavigateBack = popBackStack)
                         }
                         entry<NavigationRoutes.SettingsNotifications> {
-                            PlaceholderScreen(title = "Notifications", onNavigateBack = { backStack.removeLastOrNull() })
+                            PlaceholderScreen(title = "Notifications", onNavigateBack = popBackStack)
                         }
                         entry<NavigationRoutes.SettingsSupport> {
-                            PlaceholderScreen(title = "Support Development", onNavigateBack = { backStack.removeLastOrNull() })
+                            PlaceholderScreen(title = "Support Development", onNavigateBack = popBackStack)
                         }
                         entry<NavigationRoutes.SettingsAbout> {
-                            PlaceholderScreen(title = "About", onNavigateBack = { backStack.removeLastOrNull() })
+                            PlaceholderScreen(title = "About", onNavigateBack = popBackStack)
                         }
                         entry<NavigationRoutes.SettingsDeveloper> {
-                            PlaceholderScreen(title = "Developer Options", onNavigateBack = { backStack.removeLastOrNull() })
+                            PlaceholderScreen(title = "Developer Options", onNavigateBack = popBackStack)
                         }
 
                         entry<NavigationRoutes.HealthConnectData> {
                             HealthConnectDataScreen(
                                 waterIntakeRepository = waterIntakeRepository,
-                                onNavigateBack = { backStack.removeLastOrNull() }
+                                onNavigateBack = popBackStack
                             )
                         }
 
                         entry<NavigationRoutes.BeverageTypes> {
                             BeverageTypesScreen(
                                 userRepository = userRepository,
-                                onNavigateBack = { backStack.removeLastOrNull() }
+                                onNavigateBack = popBackStack
                             )
                         }
                     }

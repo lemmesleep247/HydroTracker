@@ -52,8 +52,7 @@ import java.io.File
 fun ProfileScreen(
     userProfile: UserProfile,
     userRepository: UserRepository,
-    waterIntakeRepository: WaterIntakeRepository,
-    onNavigateBack: () -> Unit = {}
+    waterIntakeRepository: WaterIntakeRepository
 ) {
     // Collect statistics data
     val todayStatistics by waterIntakeRepository.getTodayStatistics().collectAsState(
@@ -116,14 +115,6 @@ fun ProfileScreen(
                         text = "Profile",
                         fontWeight = FontWeight.Bold
                     )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
-                    }
                 }
             )
         },
@@ -135,7 +126,7 @@ fun ProfileScreen(
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
                 .padding(5.dp)
-                .padding(bottom = 80.dp), // Add bottom padding for navigation bar
+                .padding(bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
 

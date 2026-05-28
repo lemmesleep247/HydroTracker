@@ -6,7 +6,9 @@ package com.cemcakmak.hydrotracker.presentation.common
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
@@ -20,7 +22,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -58,25 +59,30 @@ fun MainNavigationScaffold(
         NavigationRoutes.Settings
     )
 
-    Scaffold(
-        bottomBar = {
-            if (shouldShowBottomBar) {
-                HydroNavigationBar(
-                    backStack = backStack,
-                    currentKey = currentKey,
-                    userProfileImagePath = userProfileImagePath
-                )
-            }
-        },
-        content = content
-    )
+    Column(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.weight(1f)) {
+            content(PaddingValues(0.dp))
+        }
+        if (shouldShowBottomBar) {
+            HydroNavigationBar(
+                currentKey = currentKey,
+                userProfileImagePath = userProfileImagePath,
+                onTabSelected = { key ->
+                    backStack.apply {
+                        clear()
+                        add(key)
+                    }
+                }
+            )
+        }
+    }
 }
 
 @Composable
 private fun HydroNavigationBar(
-    backStack: NavBackStack<NavKey>,
     currentKey: NavigationRoutes,
-    userProfileImagePath: String? = null
+    userProfileImagePath: String? = null,
+    onTabSelected: (NavigationRoutes) -> Unit = {}
 ) {
     NavigationBar(
         containerColor = MaterialTheme.colorScheme.surfaceContainerHighest
@@ -109,13 +115,7 @@ private fun HydroNavigationBar(
                 selected = isSelected,
                 onClick = {
                     if (!isSelected) {
-                        backStack.apply {
-                            clear()
-                            add(NavigationRoutes.Home)
-                            if (item.key != NavigationRoutes.Home) {
-                                add(item.key)
-                            }
-                        }
+                        onTabSelected(item.key)
                     }
                 },
                 colors = NavigationBarItemDefaults.colors(
@@ -184,9 +184,9 @@ fun MainNavigationScaffoldPreview() {
 fun HydroNavigationBarPreview() {
     val backStack = rememberNavBackStack(NavigationRoutes.Home)
     HydroNavigationBar(
-        backStack = backStack,
         currentKey = NavigationRoutes.Home,
-        userProfileImagePath = null
+        userProfileImagePath = null,
+        onTabSelected = {}
     )
 }
 
