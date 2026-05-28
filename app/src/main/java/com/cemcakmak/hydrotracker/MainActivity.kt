@@ -34,6 +34,7 @@ import com.cemcakmak.hydrotracker.presentation.history.HistoryScreen
 import com.cemcakmak.hydrotracker.presentation.profile.ProfileScreen
 import com.cemcakmak.hydrotracker.presentation.settings.SettingsScreen
 import com.cemcakmak.hydrotracker.presentation.settings.SettingsHubScreen
+import com.cemcakmak.hydrotracker.presentation.settings.AppearanceScreen
 import com.cemcakmak.hydrotracker.presentation.settings.PlaceholderScreen
 import com.cemcakmak.hydrotracker.presentation.settings.HealthConnectDataScreen
 import com.cemcakmak.hydrotracker.presentation.settings.BeverageTypesScreen
@@ -324,7 +325,14 @@ fun HydroTrackerApp(
                     }
 
                     composable(NavigationRoutes.SETTINGS_APPEARANCE) {
-                        PlaceholderScreen(title = "Appearance", onNavigateBack = { navController.popBackStack() })
+                        AppearanceScreen(
+                            themePreferences = themePreferences,
+                            isDynamicColorAvailable = themeViewModel.isDynamicColorAvailable(),
+                            onColorSourceChange = themeViewModel::setColorSource,
+                            onDarkModeChange = themeViewModel::updateDarkModePreference,
+                            onPureBlackChange = themeViewModel::updatePureBlackPreference,
+                            onNavigateBack = { navController.popBackStack() }
+                        )
                     }
                     composable(NavigationRoutes.SETTINGS_DISPLAY) {
                         PlaceholderScreen(title = "Display & Locale", onNavigateBack = { navController.popBackStack() })

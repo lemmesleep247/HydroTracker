@@ -26,6 +26,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -192,6 +194,8 @@ private fun SettingsCategoryCard(
         innerRadius = 6.dp
     )
 
+    val haptics = LocalHapticFeedback.current
+
     Surface(
         shape = shape,
         tonalElevation = 2.dp,
@@ -201,7 +205,10 @@ private fun SettingsCategoryCard(
                 translationY = offsetY.value
                 this.alpha = alpha.value
             },
-        onClick = { onNavigateTo(category.route) }
+        onClick = {
+            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+            onNavigateTo(category.route)
+        }
     ) {
         ListItem(
             headlineContent = { Text(category.title) },
@@ -239,16 +246,6 @@ private fun getShapeForIndex(
             bottomEnd = outerRadius
         )
         else -> RoundedCornerShape(innerRadius)
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun SettingsHubScreenPreview() {
-    HydroTrackerTheme {
-        SettingsHubScreen(
-            developerOptionsEnabled = true
-        )
     }
 }
 
