@@ -41,13 +41,10 @@ import com.cemcakmak.hydrotracker.data.models.ContainerPreset
 import com.cemcakmak.hydrotracker.data.models.BeverageType
 import com.cemcakmak.hydrotracker.data.database.repository.WaterIntakeRepository
 import com.cemcakmak.hydrotracker.data.database.repository.ContainerPresetRepository
-import com.cemcakmak.hydrotracker.health.HealthConnectManager
-import com.cemcakmak.hydrotracker.health.HealthConnectSyncManager
 import com.cemcakmak.hydrotracker.data.database.repository.WaterProgress
 import com.cemcakmak.hydrotracker.data.database.repository.TodayStatistics
 import com.cemcakmak.hydrotracker.data.database.entities.WaterIntakeEntry
 import com.cemcakmak.hydrotracker.utils.WaterCalculator
-import com.cemcakmak.hydrotracker.presentation.common.HydroSnackbarHost
 import com.cemcakmak.hydrotracker.presentation.common.showSuccessSnackbar
 import com.cemcakmak.hydrotracker.presentation.common.showErrorSnackbar
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -60,7 +57,12 @@ fun HomeScreen(
     waterIntakeRepository: WaterIntakeRepository,
     containerPresetRepository: ContainerPresetRepository,
     activeBeverageTypes: List<BeverageType> = BeverageType.getAllSorted(),
-    onNavigateToSettings: () -> Unit = {}
+    onNavigateToSettings: () -> Unit = {},
+    paddingValues: PaddingValues,
+    snackbarHostState: SnackbarHostState,
+    showCustomDialog: Boolean = false,
+    onCustomDialogChange: (Boolean) -> Unit = {},
+    onFabExpandedChange: (Boolean) -> Unit = {}
 ) {
     // Check for new user day when HomeScreen is displayed
     LaunchedEffect(Unit) {
@@ -99,10 +101,7 @@ fun HomeScreen(
 
     // Coroutine scope for database operations
     val coroutineScope = rememberCoroutineScope()
-    val snackbarHostState = remember { SnackbarHostState() }
-
-    // Custom entry dialog state
-    var showCustomDialog by remember { mutableStateOf(false) }
+    // Custom entry dialog state managed by parent for FAB hoisting
 
     // Edit entry dialog state
     var showEditDialog by remember { mutableStateOf(false) }
@@ -257,105 +256,28 @@ fun HomeScreen(
         label = "progress_animation"
     )
 
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val scrollState = rememberScrollState()
-
-    val elevated by remember {
-        derivedStateOf { scrollBehavior.state.collapsedFraction > 0f }
-    }
-    val animatedElevation by animateDpAsState(
-        targetValue = if (elevated) 6.dp else 0.dp,
-        label = "AppBarElevation"
-    )
 
     // Track scroll direction for FAB collapse/expand
     var lastScrollValue by remember { mutableIntStateOf(0) }
-    val fabExpanded by remember {
-        derivedStateOf { 
-            val currentScroll = scrollState.value
-            val isScrollingUp = currentScroll < lastScrollValue
-            val isAtTop = currentScroll <= 0
-            
-            // Update last scroll value for next comparison
-            lastScrollValue = currentScroll
-            
-            // Expand when scrolling up or at the top, collapse when scrolling down
-            isScrollingUp || isAtTop
-        }
+    LaunchedEffect(scrollState) {
+        snapshotFlow { scrollState.value }
+            .collect { currentScroll ->
+                val isScrollingUp = currentScroll < lastScrollValue
+                val isAtTop = currentScroll <= 0
+                onFabExpandedChange(isScrollingUp || isAtTop)
+                lastScrollValue = currentScroll
+            }
     }
 
-    Scaffold(
-        modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        topBar = {
-            Surface(
-                tonalElevation = animatedElevation,
-                shadowElevation = animatedElevation
-            ) {
-                TopAppBar(
-                    scrollBehavior = scrollBehavior,
-                    title = {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            Text(
-                                text = "HydroTracker",
-                                style = MaterialTheme.typography.headlineLargeEmphasized,
-                                color = MaterialTheme.colorScheme.onSurface,
-                            )
-
-                            // Health Connect Sync Status Icon
-                            HealthConnectSyncIcon(
-                                userProfile = userProfile,
-                                waterIntakeRepository = waterIntakeRepository,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    ),
-                    actions = {
-                        IconButton(onClick = onNavigateToSettings) {
-                            Icon(
-                                imageVector = Icons.Default.Settings,
-                                contentDescription = "Settings",
-                                tint = MaterialTheme.colorScheme.onSurface,
-                            )
-                        }
-                    }
-                )
-            }
-        },
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = { showCustomDialog = true
-                    haptics.performHapticFeedback(HapticFeedbackType.ContextClick) },
-                expanded = fabExpanded,
-                icon = {
-                    Icon(
-                        imageVector = Icons.Default.Edit,
-                        contentDescription = "Add Custom Amount"
-                    )
-                },
-                text = {
-                    Text(
-                        text = "Add Custom",
-                        style = MaterialTheme.typography.labelLargeEmphasized
-                    )
-                }
-            )
-        },
-        snackbarHost = { HydroSnackbarHost(snackbarHostState) }
-    ) { paddingValues ->
-        PullToRefreshBox(
-            isRefreshing = isRefreshing,
-            onRefresh = ::performManualSync,
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            state = pullToRefreshState
-        ) {
+    PullToRefreshBox(
+        isRefreshing = isRefreshing,
+        onRefresh = ::performManualSync,
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(paddingValues),
+        state = pullToRefreshState
+    ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -588,15 +510,14 @@ fun HomeScreen(
             Spacer(modifier = Modifier.height(20.dp))
             }
         }
-    }
 
     // Custom Water Entry Dialog
     if (showCustomDialog) {
         CustomWaterDialog(
-            onDismiss = { showCustomDialog = false },
+            onDismiss = { onCustomDialogChange(false) },
             onConfirm = { amount ->
                 addWaterIntake(amount, "Custom")
-                showCustomDialog = false
+                onCustomDialogChange(false)
             },
             selectedBeverageType = selectedBeverageType,
             onBeverageTypeChange = { newType ->
@@ -1647,95 +1568,6 @@ private fun getMotivationalMessage(progress: Float, userProfile: UserProfile, is
         progress >= 0.5f -> "🌟 Halfway there! Keep up the good work!"
         progress >= 0.25f -> "👍 Good start! Stay consistent!"
         else -> userProfile.activityLevel.getHydrationTip()
-    }
-}
-
-@Composable
-private fun HealthConnectSyncIcon(
-    userProfile: UserProfile,
-    waterIntakeRepository: WaterIntakeRepository,
-    modifier: Modifier = Modifier
-) {
-    val context = LocalContext.current
-    var syncStatus by remember { mutableStateOf(HealthConnectSyncManager.SyncStatus.DISABLED) }
-
-    // Get the HealthConnectSyncManager from the waterIntakeRepository
-    val syncManager = remember { waterIntakeRepository.getSyncManager() }
-
-    // Monitor sync state from the actual sync manager
-    val isSyncing by syncManager.isSyncing.collectAsState()
-
-    // Check sync status
-    LaunchedEffect(userProfile.healthConnectSyncEnabled) {
-        if (!userProfile.healthConnectSyncEnabled) {
-            syncStatus = HealthConnectSyncManager.SyncStatus.DISABLED
-            return@LaunchedEffect
-        }
-
-        syncStatus = try {
-            when {
-                !HealthConnectManager.isAvailable(context) -> HealthConnectSyncManager.SyncStatus.UNAVAILABLE
-                !HealthConnectManager.hasPermissions(context) -> HealthConnectSyncManager.SyncStatus.NO_PERMISSIONS
-                else -> HealthConnectSyncManager.SyncStatus.READY
-            }
-        } catch (_: Exception) {
-            HealthConnectSyncManager.SyncStatus.ERROR
-        }
-    }
-
-    // Animated sync indicator with smooth transitions
-    AnimatedContent(
-        targetState = Pair(syncStatus, isSyncing),
-        transitionSpec = {
-            fadeIn(animationSpec = tween(500)) togetherWith
-            fadeOut(animationSpec = tween(500))
-        },
-        modifier = modifier,
-        label = "sync_icon_transition"
-    ) { (status, syncing) ->
-        when (status) {
-            HealthConnectSyncManager.SyncStatus.READY -> {
-                if (syncing) {
-                    // Outlined primary colored cloud for active syncing
-                    Icon(
-                        imageVector = Icons.Outlined.Cloud,
-                        contentDescription = "Health Connect syncing",
-                        modifier = Modifier.fillMaxSize(),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                } else {
-                    // Filled rounded onSurface colored cloud for synced state
-                    Icon(
-                        imageVector = Icons.Rounded.Cloud,
-                        contentDescription = "Health Connect synced",
-                        modifier = Modifier.fillMaxSize(),
-                        tint = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
-            HealthConnectSyncManager.SyncStatus.DISABLED -> {
-                // No icon when disabled
-            }
-            HealthConnectSyncManager.SyncStatus.UNAVAILABLE,
-            HealthConnectSyncManager.SyncStatus.NO_PERMISSIONS -> {
-                // Warning icon for issues
-                Icon(
-                    imageVector = Icons.Default.CloudOff,
-                    contentDescription = "Health Connect not available",
-                    modifier = Modifier.fillMaxSize(),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            HealthConnectSyncManager.SyncStatus.ERROR -> {
-                // Error icon
-                Icon(
-                    imageVector = Icons.Default.ErrorOutline,
-                    contentDescription = "Health Connect error",
-                    modifier = Modifier.fillMaxSize(),
-                    tint = MaterialTheme.colorScheme.error
-                )
-            }
-        }
     }
 }
 

@@ -209,12 +209,21 @@ fun HydroTrackerApp(
                 NavigationRoutes.Home else NavigationRoutes.Onboarding
             val backStack = rememberNavBackStack(startKey)
             val currentKey = backStack.lastOrNull() as? NavigationRoutes ?: startKey
+            val snackbarHostState = remember { SnackbarHostState() }
+            var homeShowCustomDialog by remember { mutableStateOf(false) }
+            var homeFabExpanded by remember { mutableStateOf(true) }
 
             MainNavigationScaffold(
                 backStack = backStack,
                 currentKey = currentKey,
-                userProfileImagePath = userProfile?.profileImagePath
-            ) { _ ->
+                userProfileImagePath = userProfile?.profileImagePath,
+                userProfile = userProfile,
+                waterIntakeRepository = waterIntakeRepository,
+                snackbarHostState = snackbarHostState,
+                fabExpanded = homeFabExpanded,
+                onNavigateToSettings = { backStack.add(NavigationRoutes.SettingsOld) },
+                onAddCustomClick = { homeShowCustomDialog = true }
+            ) { paddingValues ->
                 val popBackStack = {
                     if (backStack.size > 1) backStack.removeLastOrNull()
                 }
@@ -287,7 +296,12 @@ fun HydroTrackerApp(
                                     waterIntakeRepository = waterIntakeRepository,
                                     containerPresetRepository = containerPresetRepository,
                                     activeBeverageTypes = activeBeverageTypes,
-                                    onNavigateToSettings = { backStack.add(NavigationRoutes.SettingsOld) }
+                                    onNavigateToSettings = { backStack.add(NavigationRoutes.SettingsOld) },
+                                    paddingValues = paddingValues,
+                                    snackbarHostState = snackbarHostState,
+                                    showCustomDialog = homeShowCustomDialog,
+                                    onCustomDialogChange = { homeShowCustomDialog = it },
+                                    onFabExpandedChange = { homeFabExpanded = it }
                                 )
                             } ?: LoadingScreen()
                         }
@@ -295,7 +309,8 @@ fun HydroTrackerApp(
                         entry<NavigationRoutes.History> {
                             HistoryScreen(
                                 waterIntakeRepository = waterIntakeRepository,
-                                themePreferences = themePreferences
+                                themePreferences = themePreferences,
+                                paddingValues = paddingValues
                             )
                         }
 
@@ -304,7 +319,9 @@ fun HydroTrackerApp(
                                 ProfileScreen(
                                     userProfile = it,
                                     userRepository = userRepository,
-                                    waterIntakeRepository = waterIntakeRepository
+                                    waterIntakeRepository = waterIntakeRepository,
+                                    paddingValues = paddingValues,
+                                    snackbarHostState = snackbarHostState
                                 )
                             } ?: LoadingScreen()
                         }
@@ -363,7 +380,8 @@ fun HydroTrackerApp(
                         entry<NavigationRoutes.Settings> {
                             SettingsHubScreen(
                                 developerOptionsEnabled = BuildConfig.DEBUG,
-                                onNavigateTo = { key -> backStack.add(key) }
+                                onNavigateTo = { key -> backStack.add(key) },
+                                paddingValues = paddingValues
                             )
                         }
 

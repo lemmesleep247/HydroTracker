@@ -4,29 +4,46 @@
 package com.cemcakmak.hydrotracker.presentation.common
 
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ShortNavigationBar
 import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.ShortNavigationBarItemDefaults
 import androidx.compose.material3.PlainTooltip
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTooltipState
+import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -39,25 +56,37 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.rememberNavBackStack
 import com.cemcakmak.hydrotracker.R
+import com.cemcakmak.hydrotracker.data.database.repository.WaterIntakeRepository
+import com.cemcakmak.hydrotracker.data.models.UserProfile
+import com.cemcakmak.hydrotracker.presentation.home.HomeTopAppBar
+import com.cemcakmak.hydrotracker.presentation.settings.SettingsTopAppBar
 import com.cemcakmak.hydrotracker.utils.ImageUtils
 import java.io.File
 
-@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun MainNavigationScaffold(
     backStack: NavBackStack<NavKey>,
     currentKey: NavigationRoutes,
     userProfileImagePath: String? = null,
+    userProfile: UserProfile? = null,
+    waterIntakeRepository: WaterIntakeRepository? = null,
+    snackbarHostState: SnackbarHostState,
+    fabExpanded: Boolean = true,
+    onNavigateToSettings: () -> Unit = {},
+    onAddCustomClick: () -> Unit = {},
     content: @Composable (PaddingValues) -> Unit
 ) {
     val shouldShowBottomBar = currentKey in setOf(
@@ -67,7 +96,43 @@ fun MainNavigationScaffold(
         NavigationRoutes.Settings
     )
 
+    // Scroll behaviors remembered per route so collapsed state survives tab switches
+    val homeScrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState())
+    val settingsScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
+
+    val nestedScrollModifier = when (currentKey) {
+        NavigationRoutes.Home -> Modifier.nestedScroll(homeScrollBehavior.nestedScrollConnection)
+        NavigationRoutes.Settings -> Modifier.nestedScroll(settingsScrollBehavior.nestedScrollConnection)
+        else -> Modifier
+    }
+
+    val haptics = LocalHapticFeedback.current
+
     Scaffold(
+        modifier = nestedScrollModifier,
+        topBar = {
+            AnimatedContent(
+                targetState = currentKey,
+                transitionSpec = {
+                    fadeIn(animationSpec = tween(200)) togetherWith
+                    fadeOut(animationSpec = tween(200))
+                },
+                label = "top_bar_crossfade"
+            ) { route ->
+                when (route) {
+                    NavigationRoutes.Home -> HomeTopAppBar(
+                        scrollBehavior = homeScrollBehavior,
+                        userProfile = userProfile,
+                        waterIntakeRepository = waterIntakeRepository,
+                        onNavigateToSettings = onNavigateToSettings
+                    )
+                    NavigationRoutes.History -> HistoryTopAppBar()
+                    NavigationRoutes.Profile -> ProfileTopAppBar()
+                    NavigationRoutes.Settings -> SettingsTopAppBar(scrollBehavior = settingsScrollBehavior)
+                    else -> {}
+                }
+            }
+        },
         bottomBar = {
             if (shouldShowBottomBar) {
                 HydroNavigationBar(
@@ -81,13 +146,64 @@ fun MainNavigationScaffold(
                     }
                 )
             }
-        }
+        },
+        floatingActionButton = {
+            AnimatedVisibility(
+                visible = currentKey == NavigationRoutes.Home,
+                enter = scaleIn() + fadeIn(),
+                exit = scaleOut() + fadeOut()
+            ) {
+                ExtendedFloatingActionButton(
+                    onClick = {
+                        onAddCustomClick()
+                        haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+                    },
+                    expanded = fabExpanded,
+                    icon = {
+                        Icon(
+                            imageVector = Icons.Default.Edit,
+                            contentDescription = "Add Custom Amount"
+                        )
+                    },
+                    text = {
+                        Text(
+                            text = "Add Custom",
+                            style = MaterialTheme.typography.labelLargeEmphasized
+                        )
+                    }
+                )
+            }
+        },
+        snackbarHost = { HydroSnackbarHost(snackbarHostState) }
     ) { paddingValues ->
-        // Intentionally not applying paddingValues here — inner screens have their own
-        // Scaffold/TopAppBar and handle insets themselves. Passing paddingValues through
-        // satisfies the Compose inspection without causing double insets.
         content(paddingValues)
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun HistoryTopAppBar() {
+    TopAppBar(
+        title = {
+            Text(
+                text = "History & Statistics",
+                fontWeight = FontWeight.Bold
+            )
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ProfileTopAppBar() {
+    TopAppBar(
+        title = {
+            Text(
+                text = "Profile",
+                fontWeight = FontWeight.Bold
+            )
+        }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -199,6 +315,7 @@ fun MainNavigationScaffoldPreview() {
     MainNavigationScaffold(
         backStack = backStack,
         currentKey = NavigationRoutes.Home,
+        snackbarHostState = remember { SnackbarHostState() },
         content = { _ ->
             Text(text = "Sample Content")
         }

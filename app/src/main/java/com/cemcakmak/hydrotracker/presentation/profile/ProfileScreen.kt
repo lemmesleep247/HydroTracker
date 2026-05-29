@@ -52,7 +52,9 @@ import java.io.File
 fun ProfileScreen(
     userProfile: UserProfile,
     userRepository: UserRepository,
-    waterIntakeRepository: WaterIntakeRepository
+    waterIntakeRepository: WaterIntakeRepository,
+    paddingValues: PaddingValues,
+    snackbarHostState: SnackbarHostState
 ) {
     // Collect statistics data
     val todayStatistics by waterIntakeRepository.getTodayStatistics().collectAsState(
@@ -66,8 +68,6 @@ fun ProfileScreen(
     // State management
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    val snackbarHostState = remember { SnackbarHostState() }
-
     // Bottom sheet states
     var showGoalBottomSheet by remember { mutableStateOf(false) }
     var showActivityBottomSheet by remember { mutableStateOf(false) }
@@ -107,28 +107,15 @@ fun ProfileScreen(
         }
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Profile",
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            )
-        },
-        snackbarHost = { HydroSnackbarHost(snackbarHostState) }
-    ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
-                .padding(5.dp)
-                .padding(bottom = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(paddingValues)
+            .verticalScroll(rememberScrollState())
+            .padding(5.dp)
+            .padding(bottom = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
 
             // Profile Header Section
             AnimatedVisibility(
@@ -206,7 +193,6 @@ fun ProfileScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
         }
-    }
 
     // Bottom Sheets
     GoalEditBottomSheet(
@@ -410,7 +396,13 @@ fun ProfileScreenPreview() {
         userRepository = userRepository,
         context = LocalContext.current
     )
-    ProfileScreen(userProfile = userProfile, userRepository = userRepository, waterIntakeRepository = waterIntakeRepository)
+    ProfileScreen(
+        userProfile = userProfile,
+        userRepository = userRepository,
+        waterIntakeRepository = waterIntakeRepository,
+        paddingValues = PaddingValues(),
+        snackbarHostState = remember { SnackbarHostState() }
+    )
 }
 
 /**

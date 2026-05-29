@@ -45,7 +45,8 @@ import java.time.temporal.WeekFields
 @Composable
 fun HistoryScreen(
     waterIntakeRepository: WaterIntakeRepository,
-    themePreferences: ThemePreferences = ThemePreferences()
+    themePreferences: ThemePreferences = ThemePreferences(),
+    paddingValues: PaddingValues
 ) {
     // State for different time periods
     var selectedPeriod by remember { mutableStateOf(TimePeriod.WEEKLY) }
@@ -69,24 +70,12 @@ fun HistoryScreen(
         isVisible = true
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "History & Statistics",
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-            )
-        }
-    ) { paddingValues ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues),
-            contentPadding = PaddingValues(16.dp),
-        ) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(paddingValues),
+        contentPadding = PaddingValues(16.dp),
+    ) {
             // Period Selector
             item {
                 AnimatedVisibility(
@@ -209,7 +198,6 @@ fun HistoryScreen(
                 Spacer(modifier = Modifier.height(80.dp))
             }
         }
-    }
 }
 
 enum class TimePeriod(val displayName: String, val description: String) {
