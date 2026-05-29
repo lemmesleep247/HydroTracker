@@ -132,18 +132,24 @@ fun MainNavigationScaffold(
                     NavigationRoutes.SettingsAppearance -> LargeFlexibleTopAppBar(
                         title = { Text("Appearance") },
                         navigationIcon = {
+                            val collapsedFraction = appearanceScrollBehavior.state.collapsedFraction
+                            val buttonWidth = (40 - collapsedFraction * 8).dp
                             FilledIconButton(
                                 onClick = { backStack.removeLastOrNull() },
                                 shapes = IconButtonDefaults.shapes(),
                                 colors = IconButtonDefaults.filledIconButtonColors(),
-                                modifier = Modifier.size(width = 32.dp, height = 40.dp)
+                                modifier = Modifier.size(width = buttonWidth, height = 40.dp)
                             ) {
                                 Icon(
                                     imageVector = ImageVector.vectorResource(R.drawable.arrow_back_filled),
                                     contentDescription = "Back"
                                 )
                             }
-                        }
+                        },
+                        scrollBehavior = appearanceScrollBehavior,
+                        colors = TopAppBarDefaults.topAppBarColors(
+                            scrolledContainerColor = MaterialTheme.colorScheme.surface
+                        )
                     )
                     else -> {}
                 }

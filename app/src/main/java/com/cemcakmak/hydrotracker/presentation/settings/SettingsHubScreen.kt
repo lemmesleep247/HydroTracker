@@ -28,12 +28,14 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.vectorResource
 
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import com.cemcakmak.hydrotracker.R
 import com.cemcakmak.hydrotracker.presentation.common.NavigationRoutes
-import com.cemcakmak.hydrotracker.ui.icons.tabler.TablerIcons
 import com.cemcakmak.hydrotracker.ui.theme.HydroTrackerTheme
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -66,7 +68,7 @@ fun SettingsHubScreen(
                     SettingsCategory(
                         title = "Appearance",
                         description = "Theme, colors and AMOLED mode",
-                        icon = { Icon(TablerIcons.PaletteFilled, contentDescription = null) },
+                        icon = { Icon(ImageVector.vectorResource(R.drawable.palette_filled), contentDescription = null) },
                         route = NavigationRoutes.SettingsAppearance
                     )
                 )
@@ -74,7 +76,7 @@ fun SettingsHubScreen(
                     SettingsCategory(
                         title = "Display & Locale",
                         description = "Week start day and locale",
-                        icon = { Icon(TablerIcons.CalendarEventFilled, contentDescription = null) },
+                        icon = { Icon(ImageVector.vectorResource(R.drawable.event_filled), contentDescription = null) },
                         route = NavigationRoutes.SettingsDisplay
                     )
                 )
@@ -82,7 +84,7 @@ fun SettingsHubScreen(
                     SettingsCategory(
                         title = "Hydration & Health",
                         description = "Water goal calculation and Health Connect",
-                        icon = { Icon(TablerIcons.HeartFilled, contentDescription = null) },
+                        icon = { Icon(ImageVector.vectorResource(R.drawable.water_filled), contentDescription = null) },
                         route = NavigationRoutes.SettingsHydration
                     )
                 )
@@ -90,7 +92,7 @@ fun SettingsHubScreen(
                     SettingsCategory(
                         title = "Quick Add Customization",
                         description = "Container presets and beverage types",
-                        icon = { Icon(TablerIcons.EditFilled, contentDescription = null) },
+                        icon = { Icon(ImageVector.vectorResource(R.drawable.checklist_filled), contentDescription = null) },
                         route = NavigationRoutes.SettingsContainers
                     )
                 )
@@ -98,7 +100,7 @@ fun SettingsHubScreen(
                     SettingsCategory(
                         title = "Notifications",
                         description = "Hydration reminders and permissions",
-                        icon = { Icon(TablerIcons.BellFilled, contentDescription = null) },
+                        icon = { Icon(ImageVector.vectorResource(R.drawable.notifications_filled), contentDescription = null) },
                         route = NavigationRoutes.SettingsNotifications
                     )
                 )
@@ -106,7 +108,7 @@ fun SettingsHubScreen(
                     SettingsCategory(
                         title = "Support Development",
                         description = "Donate and support the app",
-                        icon = { Icon(TablerIcons.HeartFilled, contentDescription = null) },
+                        icon = { Icon(ImageVector.vectorResource(R.drawable.heart_smile_filled), contentDescription = null) },
                         route = NavigationRoutes.SettingsSupport
                     )
                 )
@@ -114,7 +116,7 @@ fun SettingsHubScreen(
                     SettingsCategory(
                         title = "About",
                         description = "Sources, privacy policy and license",
-                        icon = { Icon(TablerIcons.InfoCircleFilled, contentDescription = null) },
+                        icon = { Icon(ImageVector.vectorResource(R.drawable.info_filled), contentDescription = null) },
                         route = NavigationRoutes.SettingsAbout
                     )
                 )
@@ -123,7 +125,7 @@ fun SettingsHubScreen(
                         SettingsCategory(
                             title = "Developer Options",
                             description = "Debug tools and testing",
-                            icon = { Icon(TablerIcons.CodeCircleFilled, contentDescription = null) },
+                            icon = { Icon(ImageVector.vectorResource(R.drawable.code_blocks_filled), contentDescription = null) },
                             route = NavigationRoutes.SettingsDeveloper
                         )
                     )
