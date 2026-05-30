@@ -1,24 +1,21 @@
 package com.cemcakmak.hydrotracker.ui.theme
 
-import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MotionScheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalView
-import androidx.core.view.WindowCompat
 import com.cemcakmak.hydrotracker.data.models.ThemePreferences
 import com.cemcakmak.hydrotracker.data.models.DarkModePreference
 import com.cemcakmak.hydrotracker.data.models.ColorSource
 
-// Material 3 Expressive Light Color Scheme - HydroTracker Water Theme
+// HydroTracker Light Color Scheme
 private val HydroLightColorScheme = lightColorScheme(
     primary = md_theme_light_primary,
     onPrimary = md_theme_light_onPrimary,
@@ -48,7 +45,7 @@ private val HydroLightColorScheme = lightColorScheme(
     inversePrimary = md_theme_light_inversePrimary,
 )
 
-// Material 3 Expressive Dark Color Scheme - HydroTracker Water Theme
+// HydroTracker Dark Color Scheme
 private val HydroDarkColorScheme = darkColorScheme(
     primary = md_theme_dark_primary,
     onPrimary = md_theme_dark_onPrimary,
@@ -85,25 +82,26 @@ fun HydroTrackerTheme(
 ) {
     val context = LocalContext.current
 
-    // Material 3 Expressive: Determine dark mode based on user preference
+    // Determine dark mode based on user preference
     val darkTheme = when (themePreferences.darkMode) {
         DarkModePreference.SYSTEM -> isSystemInDarkTheme()
         DarkModePreference.LIGHT -> false
         DarkModePreference.DARK -> true
     }
 
-    // Material 3 Expressive: Choose color scheme based on user preference
-    val baseColorScheme = when {
-        // Dynamic colors (Material You) - requires Android 12+
-        themePreferences.colorSource == ColorSource.DYNAMIC_COLOR &&
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+    // Choose color scheme based on user preference
+    val baseColorScheme = when (themePreferences.colorSource) {
+        ColorSource.DYNAMIC_COLOR -> {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            } else {
+                if (darkTheme) HydroDarkColorScheme else HydroLightColorScheme
+            }
         }
-        // HydroTracker water theme (default)
-        themePreferences.colorSource == ColorSource.HYDRO_THEME -> {
+
+        ColorSource.HYDRO_THEME -> {
             if (darkTheme) HydroDarkColorScheme else HydroLightColorScheme
         }
-        // Future: Custom colors could go here
         else -> {
             if (darkTheme) HydroDarkColorScheme else HydroLightColorScheme
         }
@@ -119,18 +117,10 @@ fun HydroTrackerTheme(
         baseColorScheme
     }
 
-    // Material 3 Expressive: Edge-to-edge with proper status bar theming
-    val view = LocalView.current
-    if (!view.isInEditMode) {
-        SideEffect {
-            val window = (view.context as Activity).window
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = !darkTheme
-        }
-    }
-
     MaterialTheme(
         colorScheme = colorScheme,
         typography = HydroTypography,
+        motionScheme = MotionScheme.expressive(),
         content = content
     )
 }
