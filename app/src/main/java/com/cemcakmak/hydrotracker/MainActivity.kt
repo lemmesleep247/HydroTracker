@@ -1,6 +1,7 @@
 package com.cemcakmak.hydrotracker
 
 import android.app.Application
+import android.app.UiModeManager
 import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -86,6 +87,9 @@ class MainActivity : ComponentActivity() {
     // Health Connect permission launcher - using proper Activity context
     private lateinit var healthConnectPermissionLauncher: ActivityResultLauncher<Set<String>>
 
+    // Listener so a system contrast change (Android 14+) re-applies the dynamic colors live
+    private var contrastChangeListener: UiModeManager.ContrastChangeListener? = null
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -94,6 +98,15 @@ class MainActivity : ComponentActivity() {
         // Set navigation bar contrast enforcement - only available on Android 10+ (API 29)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             window.isNavigationBarContrastEnforced = false
+        }
+
+        // Follow the system contrast setting (Android 14+). The platform bakes contrast into the
+        // dynamic color palette, so recreate on change to reload it immediately while the app is open.
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            val uiModeManager = getSystemService(UiModeManager::class.java)
+            val listener = UiModeManager.ContrastChangeListener { recreate() }
+            uiModeManager.addContrastChangeListener(mainExecutor, listener)
+            contrastChangeListener = listener
         }
 
         // Init
@@ -162,6 +175,15 @@ class MainActivity : ComponentActivity() {
                 notificationPermissionLauncher,
                 healthConnectPermissionLauncher
             )
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            contrastChangeListener?.let {
+                getSystemService(UiModeManager::class.java).removeContrastChangeListener(it)
+            }
         }
     }
 
