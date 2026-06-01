@@ -4,18 +4,29 @@ import androidx.compose.material3.Typography
 import androidx.compose.ui.text.ExperimentalTextApi
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontVariation
+import androidx.compose.ui.text.font.FontWeight
 import com.cemcakmak.hydrotracker.R
 import com.cemcakmak.hydrotracker.data.models.AppFont
 
 @OptIn(ExperimentalTextApi::class)
 val GoogleSansFlex = FontFamily(
-    Font(
-        resId = R.font.google_sans_flex,
-        variationSettings = FontVariation.Settings(
-            FontVariation.Setting("ROND", 100f),
+    listOf(
+        FontWeight.Normal, // 400
+        FontWeight.Medium, // 500
+        FontWeight.Bold,   // 700
+    ).map { weight ->
+        Font(
+            resId = R.font.google_sans_flex,
+            weight = weight,
+            variationSettings = FontVariation.Settings(
+                weight = weight,
+                style = FontStyle.Normal,
+                FontVariation.Setting("ROND", 100f)
+            )
         )
-    )
+    }
 )
 
 val Outfit = FontFamily(Font(R.font.outfit_variable))
@@ -32,44 +43,144 @@ fun fontFamilyFor(appFont: AppFont): FontFamily = when (appFont) {
 
 fun hydroTypography(fontFamily: FontFamily): Typography = Typography().let { defaults ->
     Typography(
-        displayLarge = defaults.displayLarge.copy(fontFamily = fontFamily),
-        displayMedium = defaults.displayMedium.copy(fontFamily = fontFamily),
-        displaySmall = defaults.displaySmall.copy(fontFamily = fontFamily),
+        // Display
+        displayLarge = defaults.displayLarge.copy(
+            fontFamily = fontFamily,
+            fontWeight = FontWeight.Normal
+        ),
+        displayMedium = defaults.displayMedium.copy(
+            fontFamily = fontFamily,
+            fontWeight = FontWeight.Normal
+        ),
+        displaySmall = defaults.displaySmall.copy(
+            fontFamily = fontFamily,
+            fontWeight = FontWeight.Normal
+        ),
 
-        headlineLarge = defaults.headlineLarge.copy(fontFamily = fontFamily),
-        headlineMedium = defaults.headlineMedium.copy(fontFamily = fontFamily),
-        headlineSmall = defaults.headlineSmall.copy(fontFamily = fontFamily),
+        // Headline
+        headlineLarge = defaults.headlineLarge.copy(
+            fontFamily = fontFamily,
+            fontWeight = FontWeight.Normal
+        ),
+        headlineMedium = defaults.headlineMedium.copy(
+            fontFamily = fontFamily,
+            fontWeight = FontWeight.Normal
+        ),
+        headlineSmall = defaults.headlineSmall.copy(
+            fontFamily = fontFamily,
+            fontWeight = FontWeight.Normal
+        ),
 
-        titleLarge = defaults.titleLarge.copy(fontFamily = fontFamily),
-        titleMedium = defaults.titleMedium.copy(fontFamily = fontFamily),
-        titleSmall = defaults.titleSmall.copy(fontFamily = fontFamily),
+        // Title
+        titleLarge = defaults.titleLarge.copy(
+            fontFamily = fontFamily,
+            fontWeight = FontWeight.Normal
+        ),
+        titleMedium = defaults.titleMedium.copy(
+            fontFamily = fontFamily,
+            fontWeight = FontWeight.Medium
+        ),
+        titleSmall = defaults.titleSmall.copy(
+            fontFamily = fontFamily,
+            fontWeight = FontWeight.Medium
+        ),
 
-        bodyLarge = defaults.bodyLarge.copy(fontFamily = fontFamily),
-        bodyMedium = defaults.bodyMedium.copy(fontFamily = fontFamily),
-        bodySmall = defaults.bodySmall.copy(fontFamily = fontFamily),
+        // Body
+        bodyLarge = defaults.bodyLarge.copy(
+            fontFamily = fontFamily,
+            fontWeight = FontWeight.Normal
+        ),
+        bodyMedium = defaults.bodyMedium.copy(
+            fontFamily = fontFamily,
+            fontWeight = FontWeight.Normal
+        ),
+        bodySmall = defaults.bodySmall.copy(
+            fontFamily = fontFamily,
+            fontWeight = FontWeight.Normal
+        ),
 
-        labelLarge = defaults.labelLarge.copy(fontFamily = fontFamily),
-        labelMedium = defaults.labelMedium.copy(fontFamily = fontFamily),
-        labelSmall = defaults.labelSmall.copy(fontFamily = fontFamily),
+        // Label
+        labelLarge = defaults.labelLarge.copy(
+            fontFamily = fontFamily,
+            fontWeight = FontWeight.Medium
+        ),
+        labelMedium = defaults.labelMedium.copy(
+            fontFamily = fontFamily,
+            fontWeight = FontWeight.Medium
+        ),
+        labelSmall = defaults.labelSmall.copy(
+            fontFamily = fontFamily,
+            fontWeight = FontWeight.Medium
+        ),
 
-        displayLargeEmphasized = defaults.displayLargeEmphasized.copy(fontFamily = fontFamily),
-        displayMediumEmphasized = defaults.displayMediumEmphasized.copy(fontFamily = fontFamily),
-        displaySmallEmphasized = defaults.displaySmallEmphasized.copy(fontFamily = fontFamily),
+        // Display Emphasized
+        displayLargeEmphasized = defaults.displayLargeEmphasized.copy(
+            fontFamily = fontFamily,
+            fontWeight = FontWeight.Medium
+        ),
+        displayMediumEmphasized = defaults.displayMediumEmphasized.copy(
+            fontFamily = fontFamily,
+            fontWeight = FontWeight.Medium
+        ),
+        displaySmallEmphasized = defaults.displaySmallEmphasized.copy(
+            fontFamily = fontFamily,
+            fontWeight = FontWeight.Medium
+        ),
 
-        headlineLargeEmphasized = defaults.headlineLargeEmphasized.copy(fontFamily = fontFamily),
-        headlineMediumEmphasized = defaults.headlineMediumEmphasized.copy(fontFamily = fontFamily),
-        headlineSmallEmphasized = defaults.headlineSmallEmphasized.copy(fontFamily = fontFamily),
+        // Headline Emphasized
+        headlineLargeEmphasized = defaults.headlineLargeEmphasized.copy(
+            fontFamily = fontFamily,
+            fontWeight = FontWeight.Medium
+        ),
+        headlineMediumEmphasized = defaults.headlineMediumEmphasized.copy(
+            fontFamily = fontFamily,
+            fontWeight = FontWeight.Medium
+        ),
+        headlineSmallEmphasized = defaults.headlineSmallEmphasized.copy(
+            fontFamily = fontFamily,
+            fontWeight = FontWeight.Medium
+        ),
 
-        titleLargeEmphasized = defaults.titleLargeEmphasized.copy(fontFamily = fontFamily),
-        titleMediumEmphasized = defaults.titleMediumEmphasized.copy(fontFamily = fontFamily),
-        titleSmallEmphasized = defaults.titleSmallEmphasized.copy(fontFamily = fontFamily),
+        // Title Emphasized
+        titleLargeEmphasized = defaults.titleLargeEmphasized.copy(
+            fontFamily = fontFamily,
+            fontWeight = FontWeight.Medium
+        ),
+        titleMediumEmphasized = defaults.titleMediumEmphasized.copy(
+            fontFamily = fontFamily,
+            fontWeight = FontWeight.Bold
+        ),
+        titleSmallEmphasized = defaults.titleSmallEmphasized.copy(
+            fontFamily = fontFamily,
+            fontWeight = FontWeight.Bold
+        ),
 
-        bodyLargeEmphasized = defaults.bodyLargeEmphasized.copy(fontFamily = fontFamily),
-        bodyMediumEmphasized = defaults.bodyMediumEmphasized.copy(fontFamily = fontFamily),
-        bodySmallEmphasized = defaults.bodySmallEmphasized.copy(fontFamily = fontFamily),
+        // Body Emphasized
+        bodyLargeEmphasized = defaults.bodyLargeEmphasized.copy(
+            fontFamily = fontFamily,
+            fontWeight = FontWeight.Medium
+        ),
+        bodyMediumEmphasized = defaults.bodyMediumEmphasized.copy(
+            fontFamily = fontFamily,
+            fontWeight = FontWeight.Medium
+        ),
+        bodySmallEmphasized = defaults.bodySmallEmphasized.copy(
+            fontFamily = fontFamily,
+            fontWeight = FontWeight.Medium
+        ),
 
-        labelLargeEmphasized = defaults.labelLargeEmphasized.copy(fontFamily = fontFamily),
-        labelMediumEmphasized = defaults.labelMediumEmphasized.copy(fontFamily = fontFamily),
-        labelSmallEmphasized = defaults.labelSmallEmphasized.copy(fontFamily = fontFamily),
+        // Label Emphasized
+        labelLargeEmphasized = defaults.labelLargeEmphasized.copy(
+            fontFamily = fontFamily,
+            fontWeight = FontWeight.Bold
+        ),
+        labelMediumEmphasized = defaults.labelMediumEmphasized.copy(
+            fontFamily = fontFamily,
+            fontWeight = FontWeight.Bold
+        ),
+        labelSmallEmphasized = defaults.labelSmallEmphasized.copy(
+            fontFamily = fontFamily,
+            fontWeight = FontWeight.Bold
+        ),
     )
 }

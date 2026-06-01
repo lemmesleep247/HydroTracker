@@ -161,15 +161,15 @@ enum class HydrationStandard {
 
     fun getDisplayName(): String {
         return when (this) {
-            EFSA -> "EFSA (European)"
-            IOM -> "IOM (US)"
+            EFSA -> "EFSA"
+            IOM -> "IOM"
         }
     }
 
     fun getDescription(): String {
         return when (this) {
-            EFSA -> "European Food Safety Authority standards (conservative)"
-            IOM -> "Institute of Medicine standards (US, higher intake)"
+            EFSA -> "European Food Safety Authority standards"
+            IOM -> "Institute of Medicine standards"
         }
     }
 

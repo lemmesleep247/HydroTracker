@@ -41,7 +41,6 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.cemcakmak.hydrotracker.R
@@ -205,9 +204,15 @@ private fun DarkModeSection(
 
                 ToggleButton(
                     checked = isSelected,
-                    onCheckedChange = {
+                    onCheckedChange = { enabled ->
                         onDarkModeChange(preference)
-                        haptics.performHapticFeedback(HapticFeedbackType.ToggleOn)
+
+                        val hapticType = if (enabled) {
+                            HapticFeedbackType.ToggleOn
+                        } else {
+                            HapticFeedbackType.ToggleOff
+                        }
+                        haptics.performHapticFeedback(hapticType)
                     },
                     modifier = Modifier.weight(1f)
                 ) {
@@ -540,7 +545,13 @@ private fun NavigationBarSection(
                         checked = autoHide,
                         onCheckedChange = { enabled ->
                             onAutoHideChange(enabled)
-                            haptics.performHapticFeedback(HapticFeedbackType.ToggleOn)
+
+                            val hapticType = if (enabled) {
+                                HapticFeedbackType.ToggleOn
+                            } else {
+                                HapticFeedbackType.ToggleOff
+                            }
+                            haptics.performHapticFeedback(hapticType)
                         },
                         thumbContent = if (autoHide) {
                             {
@@ -654,8 +665,7 @@ private fun PreviewStatChip(
     ) {
         Text(
             text = value,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.Bold,
+            style = MaterialTheme.typography.labelLargeEmphasized,
             color = MaterialTheme.colorScheme.primary
         )
         Text(

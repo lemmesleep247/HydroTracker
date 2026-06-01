@@ -48,6 +48,7 @@ import com.cemcakmak.hydrotracker.presentation.settings.SettingsScreen
 import com.cemcakmak.hydrotracker.presentation.settings.SettingsHubScreen
 import com.cemcakmak.hydrotracker.presentation.settings.AppearanceScreen
 import com.cemcakmak.hydrotracker.presentation.settings.DisplayLocaleScreen
+import com.cemcakmak.hydrotracker.presentation.settings.HydrationHealthScreen
 import com.cemcakmak.hydrotracker.presentation.settings.PlaceholderScreen
 import com.cemcakmak.hydrotracker.presentation.settings.HealthConnectDataScreen
 import com.cemcakmak.hydrotracker.presentation.settings.BeverageTypesScreen
@@ -450,7 +451,35 @@ fun HydroTrackerApp(
                             )
                         }
                         entry<NavigationRoutes.SettingsHydration> {
-                            PlaceholderScreen(title = "Hydration & Health", onNavigateBack = popBackStack)
+                            HydrationHealthScreen(
+                                userProfile = userProfile,
+                                userRepository = userRepository,
+                                waterIntakeRepository = waterIntakeRepository,
+                                snackbarHostState = snackbarHostState,
+                                healthConnectPermissionLauncher = healthConnectPermissionLauncher,
+                                onHydrationStandardChange = { newStandard ->
+                                    userProfile?.let { profile ->
+                                        val newGoal = com.cemcakmak.hydrotracker.utils.WaterCalculator.calculateDailyWaterGoal(
+                                            gender = profile.gender,
+                                            ageGroup = profile.ageGroup,
+                                            activityLevel = profile.activityLevel,
+                                            weight = profile.weight,
+                                            hydrationStandard = newStandard
+                                        )
+                                        val updatedProfile = profile.copy(
+                                            hydrationStandard = newStandard,
+                                            dailyWaterGoal = newGoal
+                                        )
+                                        userRepository.saveUserProfile(updatedProfile)
+                                    }
+                                },
+                                onHealthConnectSyncChange = { enabled ->
+                                    userProfile?.let { profile ->
+                                        userRepository.saveUserProfile(profile.copy(healthConnectSyncEnabled = enabled))
+                                    }
+                                },
+                                onNavigateBack = popBackStack
+                            )
                         }
                         entry<NavigationRoutes.SettingsContainers> {
                             PlaceholderScreen(title = "Quick Add Customization", onNavigateBack = popBackStack)
