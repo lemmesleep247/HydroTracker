@@ -10,7 +10,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -26,6 +27,7 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.cemcakmak.hydrotracker.R
@@ -34,6 +36,7 @@ import com.cemcakmak.hydrotracker.data.database.repository.WaterIntakeRepository
 import com.cemcakmak.hydrotracker.data.models.ActivityLevel
 import com.cemcakmak.hydrotracker.data.models.AgeGroup
 import com.cemcakmak.hydrotracker.data.models.Gender
+import com.cemcakmak.hydrotracker.data.models.BeverageType
 import com.cemcakmak.hydrotracker.data.models.HydrationStandard
 import com.cemcakmak.hydrotracker.data.models.UserProfile
 import com.cemcakmak.hydrotracker.data.repository.UserRepository
@@ -77,6 +80,31 @@ fun HydrationHealthScreen(
                 snackbarHostState = snackbarHostState,
                 onHealthConnectSyncChange = onHealthConnectSyncChange
             )
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(showBackground = true, heightDp = 400)
+@Composable
+fun HealthConnectHistoryEmptyPreview() {
+    HydroTrackerTheme {
+        Surface(
+            color = MaterialTheme.colorScheme.surfaceContainerLow,
+            shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
+            modifier = Modifier.fillMaxSize()
+        ) {
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                BottomSheetDefaults.DragHandle()
+                HealthConnectHistoryContent(
+                    entries = emptyList(),
+                    isLoading = false,
+                    modifier = Modifier.weight(1f)
+                )
+            }
         }
     }
 }
@@ -567,11 +595,12 @@ private fun HealthConnectHistorySheet(
     waterIntakeRepository: WaterIntakeRepository?,
     onDismiss: () -> Unit
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
     var entries by remember { mutableStateOf<List<WaterIntakeEntry>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
+    var refreshTrigger by remember { mutableIntStateOf(0) }
 
-    LaunchedEffect(waterIntakeRepository) {
+    LaunchedEffect(waterIntakeRepository, refreshTrigger) {
         if (waterIntakeRepository != null) {
             combine(
                 waterIntakeRepository.getAllEntries(),
@@ -590,6 +619,8 @@ private fun HealthConnectHistorySheet(
         HealthConnectHistoryContent(
             entries = entries,
             isLoading = isLoading,
+            waterIntakeRepository = waterIntakeRepository,
+            onEntryChanged = { refreshTrigger++ },
             modifier = Modifier.fillMaxHeight(0.9f)
         )
     }
@@ -597,9 +628,11 @@ private fun HealthConnectHistorySheet(
 
 @Composable
 private fun HealthConnectHistoryContent(
+    modifier: Modifier = Modifier,
     entries: List<WaterIntakeEntry>,
     isLoading: Boolean,
-    modifier: Modifier = Modifier
+    waterIntakeRepository: WaterIntakeRepository? = null,
+    onEntryChanged: () -> Unit = {}
 ) {
     Column(
         modifier = modifier
@@ -609,6 +642,7 @@ private fun HealthConnectHistoryContent(
         Text(
             text = "Health Connect Data",
             style = MaterialTheme.typography.titleMediumEmphasized,
+            color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(bottom = 12.dp, start = 4.dp)
         )
         when {
@@ -625,22 +659,49 @@ private fun HealthConnectHistoryContent(
                     .weight(1f),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "No entries yet.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Filled.WaterDrop,
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                        tint = MaterialTheme.colorScheme.outline
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "No Water Intake Data",
+                        style = MaterialTheme.typography.titleMedium,
+                        textAlign = TextAlign.Center
+                    )
+                    Text(
+                        text = "No water intake entries found in the database.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        textAlign = TextAlign.Center
+                    )
+                }
             }
 
-            else -> LazyColumn(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = PaddingValues(bottom = 24.dp)
-            ) {
-                items(entries.sortedByDescending { it.timestamp }) { entry ->
-                    HistoryEntryRow(entry)
+            else -> {
+                val sortedEntries = remember(entries) { entries.sortedByDescending { it.timestamp } }
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(0.dp),
+                    contentPadding = PaddingValues(bottom = 24.dp)
+                ) {
+                    itemsIndexed(sortedEntries) { index, entry ->
+                        HealthConnectHistoryItem(
+                            entry = entry,
+                            index = index,
+                            size = sortedEntries.size,
+                            waterIntakeRepository = waterIntakeRepository,
+                            onEntryChanged = onEntryChanged
+                        )
+                    }
                 }
             }
         }
@@ -648,7 +709,14 @@ private fun HealthConnectHistoryContent(
 }
 
 @Composable
-private fun HistoryEntryRow(entry: WaterIntakeEntry) {
+private fun HealthConnectHistoryItem(
+    entry: WaterIntakeEntry,
+    index: Int,
+    size: Int,
+    waterIntakeRepository: WaterIntakeRepository?,
+    onEntryChanged: () -> Unit
+) {
+    val coroutineScope = rememberCoroutineScope()
     val isExternal = entry.isExternalEntry()
     val isHidden = entry.isHidden
     val formatted = remember(entry.timestamp) {
@@ -656,48 +724,135 @@ private fun HistoryEntryRow(entry: WaterIntakeEntry) {
             .atZone(java.time.ZoneId.systemDefault())
             .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
     }
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        tonalElevation = 1.dp,
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(
+
+    val haptics = LocalHapticFeedback.current
+
+    SettingsGroupCard(index = index, size = size) {
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                .padding(16.dp)
         ) {
-            Icon(
-                imageVector = Icons.Filled.WaterDrop,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(20.dp)
-            )
-            Column(modifier = Modifier.weight(1f)) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.Top
+            ) {
+                Column {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "${entry.getEffectiveHydrationAmount().toInt()} ml",
+                            style = MaterialTheme.typography.titleSmallEmphasized,
+                        )
+
+                        Text(
+                            text = formatted,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                    }
+
+                    Column(
+                        modifier = Modifier
+                    ) {
+                        if (entry.containerType.isNotEmpty()) {
+                            Text(
+                                text = "Amount: ${entry.containerVolume.toInt()} ml (${entry.containerType})",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                        }
+
+                        val beverageType = entry.getBeverageType()
+                        val effectiveAmount = entry.getEffectiveHydrationAmount().toInt()
+                        if (beverageType.hydrationMultiplier != 1.0) {
+                            Text(
+                                text = "Beverage: ${beverageType.displayName} (${effectiveAmount}ml eff.)",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                        } else {
+                            Text(
+                                text = "Beverage: ${beverageType.displayName}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                        }
+                    }
+                }
+
+                Column {
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        if (isHidden) {
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.secondary,
+                            ) {
+                                Text(
+                                    modifier = Modifier
+                                        .padding(vertical = 4.dp)
+                                        .padding(horizontal = 10.dp),
+                                    text = "Hidden",
+                                    style = MaterialTheme.typography.labelMedium,
+                                )
+                            }
+                        }
+                        if (isExternal) {
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.tertiary,
+                            ) {
+                                Text(
+                                    modifier = Modifier
+                                        .padding(vertical = 4.dp)
+                                        .padding(horizontal = 10.dp),
+                                    text = "External",
+                                    style = MaterialTheme.typography.labelMedium,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (!entry.healthConnectRecordId.isNullOrEmpty()) {
                 Text(
-                    text = "${entry.getEffectiveHydrationAmount().toInt()} ml",
-                    style = MaterialTheme.typography.titleSmallEmphasized,
-                )
-                Text(
-                    text = formatted,
+                    text = "Health Connect ID: ${entry.healthConnectRecordId}",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    color = MaterialTheme.colorScheme.secondary
                 )
             }
-            if (isHidden) {
-                AssistChip(
-                    onClick = {},
-                    label = { Text("Hidden", style = MaterialTheme.typography.labelSmall) },
-                    modifier = Modifier.height(24.dp)
-                )
-            }
-            if (isExternal) {
-                AssistChip(
-                    onClick = {},
-                    label = { Text("External", style = MaterialTheme.typography.labelSmall) },
-                    modifier = Modifier.height(24.dp)
-                )
+
+            if (isHidden && isExternal) {
+                Button(
+                    onClick = {
+                        coroutineScope.launch {
+                            try {
+                                waterIntakeRepository?.unhideWaterIntake(entry)
+                                onEntryChanged()
+                            } catch (_: Exception) {
+                            }
+                        }
+                        haptics.performHapticFeedback(HapticFeedbackType.ToggleOn)
+                    },
+                    shapes = ButtonDefaults.shapes(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = 8.dp),
+                    border = ButtonDefaults.outlinedButtonBorder(),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.surface
+                    )
+                ) {
+                    Text(
+                        text = "Unhide Entry",
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
             }
         }
     }
@@ -760,7 +915,10 @@ fun HealthConnectHistorySheetPreview() {
             date = "2026-05-31",
             containerType = "Bottle",
             containerVolume = 750.0,
-            isHidden = true
+            isHidden = true,
+            note = "Imported from Samsung Health",
+            beverageType = BeverageType.MILK.name,
+            healthConnectRecordId = "hc-record-12345"
         ),
         WaterIntakeEntry(
             id = 4,
@@ -778,6 +936,16 @@ fun HealthConnectHistorySheetPreview() {
             containerType = "Cup",
             containerVolume = 300.0,
             note = "Imported from Fitbit"
+        ),
+        WaterIntakeEntry(
+            id = 6,
+            amount = 500.0,
+            timestamp = now - 32 * 3_600_000L,
+            date = "2026-05-30",
+            containerType = "Glass",
+            containerVolume = 500.0,
+            beverageType = BeverageType.MILK.name,
+            healthConnectRecordId = "hc-record-12345"
         )
     )
     HydroTrackerTheme {
@@ -794,6 +962,8 @@ fun HealthConnectHistorySheetPreview() {
                 HealthConnectHistoryContent(
                     entries = sampleEntries,
                     isLoading = false,
+                    waterIntakeRepository = null,
+                    onEntryChanged = {},
                     modifier = Modifier.weight(1f)
                 )
             }
