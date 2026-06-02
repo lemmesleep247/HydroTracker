@@ -362,17 +362,16 @@ private fun HealthConnectSection(
                                 }
                                 haptics.performHapticFeedback(hapticType)
                             },
-                            thumbContent = {
-                                val iconType = if (userProfile?.healthConnectSyncEnabled == true) {
-                                    ImageVector.vectorResource(R.drawable.sync_filled)
-                                } else {
-                                    ImageVector.vectorResource(R.drawable.sync)
+                            thumbContent = if (userProfile?.healthConnectSyncEnabled == true) {
+                                {
+                                    Icon(
+                                        imageVector = ImageVector.vectorResource(R.drawable.sync_filled),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(SwitchDefaults.IconSize)
+                                    )
                                 }
-                                Icon(
-                                    imageVector = iconType,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(SwitchDefaults.IconSize)
-                                )
+                            } else {
+                                null
                             }
                         )
                     }
