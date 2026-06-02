@@ -6,6 +6,7 @@ import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.cemcakmak.hydrotracker.data.database.repository.WaterIntakeRepository
 import com.cemcakmak.hydrotracker.data.database.repository.ContainerPresetRepository
+import com.cemcakmak.hydrotracker.data.database.repository.CustomBeverageRepository
 import com.cemcakmak.hydrotracker.data.repository.UserRepository
 
 object DatabaseInitializer {
@@ -168,6 +169,47 @@ object DatabaseInitializer {
         }
     }
 
+    private val MIGRATION_6_7 = object : Migration(6, 7) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            try {
+                println("DatabaseInitializer: Starting migration from version 6 to 7")
+
+                // Create the custom_beverages table
+                db.execSQL("""
+                    CREATE TABLE IF NOT EXISTS custom_beverages (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL,
+                        name TEXT NOT NULL,
+                        hydration_multiplier REAL NOT NULL,
+                        icon_key TEXT NOT NULL
+                    )
+                """)
+
+                println("DatabaseInitializer: Migration 6→7 completed. Created custom_beverages table.")
+
+            } catch (e: Exception) {
+                println("DatabaseInitializer: Error during migration 6→7: ${e.message}")
+                throw e
+            }
+        }
+    }
+
+    private val MIGRATION_7_8 = object : Migration(7, 8) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            try {
+                println("DatabaseInitializer: Starting migration from version 7 to 8")
+
+                // Add nullable beverage_multiplier to water_intake_entries (custom beverage effectiveness)
+                db.execSQL("ALTER TABLE water_intake_entries ADD COLUMN beverage_multiplier REAL")
+
+                println("DatabaseInitializer: Migration 7→8 completed. Added beverage_multiplier column.")
+
+            } catch (e: Exception) {
+                println("DatabaseInitializer: Error during migration 7→8: ${e.message}")
+                throw e
+            }
+        }
+    }
+
     fun getDatabase(context: Context): HydroTrackerDatabase {
         return database ?: synchronized(this) {
             val instance = Room.databaseBuilder(
@@ -175,7 +217,7 @@ object DatabaseInitializer {
                 HydroTrackerDatabase::class.java,
                 HydroTrackerDatabase.DATABASE_NAME
             )
-                .addMigrations(MIGRATION_1_2, MIGRATION_1_3, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6)
+                .addMigrations(MIGRATION_1_2, MIGRATION_1_3, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
                 // Add fallback strategy for Room 2.8.1 compatibility issues
                 .fallbackToDestructiveMigrationOnDowngrade(true)
                 .build()
@@ -200,6 +242,13 @@ object DatabaseInitializer {
         val db = getDatabase(context)
         return ContainerPresetRepository(
             containerPresetDao = db.containerPresetDao()
+        )
+    }
+
+    fun getCustomBeverageRepository(context: Context): CustomBeverageRepository {
+        val db = getDatabase(context)
+        return CustomBeverageRepository(
+            customBeverageDao = db.customBeverageDao()
         )
     }
 

@@ -48,7 +48,12 @@ data class WaterIntakeEntry(
     val isHidden: Boolean = false,
 
     @ColumnInfo(name = "beverage_type")
-    val beverageType: String = BeverageType.WATER.name
+    val beverageType: String = BeverageType.WATER.name,
+
+    // Effectiveness captured at log time for custom beverages. Null for preset/legacy rows,
+    // which fall back to the BeverageType enum multiplier.
+    @ColumnInfo(name = "beverage_multiplier")
+    val beverageMultiplier: Double? = null
 ) {
     /**
      * Returns a formatted time string according to system locale and timezone preferences
@@ -57,7 +62,7 @@ data class WaterIntakeEntry(
         val instant = Instant.ofEpochMilli(timestamp)
         val localDateTime = instant.atZone(ZoneId.systemDefault())
 
-        // Use system locale and preferences for 12/24 hour format
+        // Use system locale and preferences for 12/24-hour format
         val formatter = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
             .withLocale(Locale.getDefault())
 
@@ -104,10 +109,19 @@ data class WaterIntakeEntry(
     }
 
     /**
-     * Get the effective hydration amount considering beverage type multiplier
+     * Display name for this entry's beverage. For presets this is the enum's display name;
+     * for custom beverages [beverageType] stores the custom name directly.
+     */
+    fun getBeverageDisplayName(): String {
+        return BeverageType.entries.find { it.name == beverageType }?.displayName ?: beverageType
+    }
+
+    /**
+     * Get the effective hydration amount considering beverage type multiplier.
+     * Custom beverages store their multiplier on the entry; presets/legacy rows use the enum.
      */
     fun getEffectiveHydrationAmount(): Double {
-        return amount * getBeverageType().hydrationMultiplier
+        return amount * (beverageMultiplier ?: getBeverageType().hydrationMultiplier)
     }
 
     /**

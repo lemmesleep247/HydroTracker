@@ -83,7 +83,8 @@ class WaterIntakeRepository(
     suspend fun addWaterIntake(
         amount: Double,
         containerPreset: ContainerPreset,
-        beverageType: BeverageType = BeverageType.WATER,
+        beverageKey: String = BeverageType.WATER.name,
+        beverageMultiplier: Double? = null,
         note: String? = null
     ): Result<Long> = withContext(Dispatchers.IO) {
         try {
@@ -96,7 +97,8 @@ class WaterIntakeRepository(
                 date = userDayString,
                 containerType = containerPreset.name,
                 containerVolume = containerPreset.volume,
-                beverageType = beverageType.name,
+                beverageType = beverageKey,
+                beverageMultiplier = beverageMultiplier,
                 note = note,
                 createdAt = System.currentTimeMillis()
             )

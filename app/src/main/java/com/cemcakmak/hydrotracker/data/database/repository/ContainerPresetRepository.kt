@@ -71,6 +71,14 @@ class ContainerPresetRepository(
     }
 
     /**
+     * Persist a new preset ordering. [orderedIds] is the full list of preset ids in the
+     * desired display order; each id's index becomes its display_order.
+     */
+    suspend fun reorderPresets(orderedIds: List<Long>) {
+        containerPresetDao.reorderPresets(orderedIds)
+    }
+
+    /**
      * Reset to default presets - clears all custom presets and re-seeds defaults
      */
     suspend fun resetToDefaults() {
