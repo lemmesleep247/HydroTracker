@@ -826,7 +826,9 @@ private fun TimePickerBottomSheet(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
-    val sheetState = rememberModalBottomSheetState()
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true
+    )
     val parts = initialTime.split(":")
     val initialHour = parts.getOrNull(0)?.toIntOrNull() ?: 7
     val initialMinute = parts.getOrNull(1)?.toIntOrNull() ?: 0
@@ -858,6 +860,22 @@ private fun TimePickerSheetContent(
     onDismiss: () -> Unit
 ) {
     val haptics = LocalHapticFeedback.current
+
+    var lastHour by remember { mutableIntStateOf(timeState.hour) }
+    var lastMinute by remember { mutableIntStateOf(timeState.minute) }
+
+    LaunchedEffect(timeState.hour) {
+        if (timeState.hour != lastHour) {
+            haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+            lastHour = timeState.hour
+        }
+    }
+    LaunchedEffect(timeState.minute) {
+        if (timeState.minute != lastMinute) {
+            haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+            lastMinute = timeState.minute
+        }
+    }
 
     Column(
         modifier = Modifier
