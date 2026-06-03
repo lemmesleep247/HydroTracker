@@ -39,7 +39,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.nestedscroll.nestedScroll
@@ -57,6 +56,8 @@ import android.view.RoundedCorner
 import android.view.WindowManager
 import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import com.cemcakmak.hydrotracker.R
+import com.cemcakmak.hydrotracker.presentation.common.groupCorners
+import com.cemcakmak.hydrotracker.presentation.common.getGroupShape
 
 /**
  * Shared UI building blocks for the settings sub-screens (Appearance, Display & Locale, …).
@@ -69,6 +70,7 @@ internal fun SettingsDetailScaffold(
     title: String,
     onNavigateBack: () -> Unit,
     paddingValues: PaddingValues = PaddingValues(),
+    scrollable: Boolean = true,
     content: @Composable ColumnScope.() -> Unit
 ) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
@@ -146,14 +148,15 @@ internal fun SettingsDetailScaffold(
             )
         }
     ) { innerPadding ->
+        val scrollState = rememberScrollState()
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .verticalScroll(rememberScrollState())
+                .then(if (scrollable) Modifier.verticalScroll(scrollState) else Modifier)
                 .padding(horizontal = 16.dp)
-                .padding(bottom = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp),
+                .then(if (scrollable) Modifier.padding(bottom = 24.dp) else Modifier),
+            verticalArrangement = if (scrollable) Arrangement.spacedBy(24.dp) else Arrangement.Top,
             content = content
         )
     }
@@ -166,35 +169,6 @@ internal fun SettingsSectionHeader(title: String) {
         text = title,
         style = MaterialTheme.typography.titleMedium,
         color = MaterialTheme.colorScheme.primary
-    )
-}
-
-internal data class GroupCorners(
-    val topStart: Dp,
-    val topEnd: Dp,
-    val bottomStart: Dp,
-    val bottomEnd: Dp
-)
-
-/** Per-corner radii for a card at [index] within a grouped list of [size] items. */
-internal fun groupCorners(index: Int, size: Int): GroupCorners {
-    val outer = 30.dp
-    val inner = 6.dp
-    return when {
-        size == 1 -> GroupCorners(outer, outer, outer, outer)
-        index == 0 -> GroupCorners(outer, outer, inner, inner)
-        index == size - 1 -> GroupCorners(inner, inner, outer, outer)
-        else -> GroupCorners(inner, inner, inner, inner)
-    }
-}
-
-internal fun getGroupShape(index: Int, size: Int): Shape {
-    val c = groupCorners(index, size)
-    return RoundedCornerShape(
-        topStart = c.topStart,
-        topEnd = c.topEnd,
-        bottomStart = c.bottomStart,
-        bottomEnd = c.bottomEnd
     )
 }
 

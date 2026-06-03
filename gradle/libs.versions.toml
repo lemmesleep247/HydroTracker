@@ -13,7 +13,6 @@ navigation3 = "1.1.2"
 lifecycleViewmodel = "2.9.4"
 room = "2.8.1"
 healthConnect = "1.1.0-rc03"
-reorderable = "2.4.3"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -48,9 +47,6 @@ androidx-room-compiler = { group = "androidx.room", name = "room-compiler", vers
 
 # Health Connect
 androidx-health-connect = { group = "androidx.health.connect", name = "connect-client", version.ref = "healthConnect" }
-
-# Reorderable (drag-and-drop for LazyColumn)
-reorderable = { group = "sh.calvin.reorderable", name = "reorderable", version.ref = "reorderable" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -1,37 +1,28 @@
 package com.cemcakmak.hydrotracker.presentation.settings
 
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.WaterDrop
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.cemcakmak.hydrotracker.R
 import com.cemcakmak.hydrotracker.data.database.repository.ContainerPresetRepository
 import com.cemcakmak.hydrotracker.data.models.ContainerPreset
 import com.cemcakmak.hydrotracker.presentation.common.AddContainerPresetBottomSheet
 import com.cemcakmak.hydrotracker.presentation.common.EditContainerPresetBottomSheet
+import com.cemcakmak.hydrotracker.presentation.common.ReorderableGroupedColumn
 import com.cemcakmak.hydrotracker.presentation.common.showSuccessSnackbar
 import com.cemcakmak.hydrotracker.ui.theme.HydroTrackerTheme
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
-import sh.calvin.reorderable.ReorderableColumn
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
@@ -48,9 +39,6 @@ fun ContainerPresetsScreen(
         containerPresetRepository?.getAllPresets() ?: flowOf(ContainerPreset.getDefaultPresets())
     }.collectAsState(initial = emptyList())
 
-    // Local copy so drag reordering stays smooth; re-synced whenever the source list emits.
-    var items by remember(presets) { mutableStateOf(presets) }
-
     var showAddSheet by remember { mutableStateOf(false) }
     var showEditSheet by remember { mutableStateOf(false) }
     var presetToEdit by remember { mutableStateOf<ContainerPreset?>(null) }
@@ -59,130 +47,54 @@ fun ContainerPresetsScreen(
     SettingsDetailScaffold(
         title = "Container Presets",
         onNavigateBack = onNavigateBack,
-        paddingValues = paddingValues
+        paddingValues = paddingValues,
+        scrollable = false
     ) {
-        Column(
-            modifier = Modifier.padding(top = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                text = "Quick-select containers on the home screen. Tap to edit, drag to reorder.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 4.dp)
-            )
-
-            ReorderableColumn(
-                list = items,
-                onSettle = { fromIndex, toIndex ->
-                    val updated = items.toMutableList().apply { add(toIndex, removeAt(fromIndex)) }
-                    items = updated
-                    haptics.performHapticFeedback(HapticFeedbackType.Confirm)
-                    containerPresetRepository?.let { repo ->
-                        coroutineScope.launch { repo.reorderPresets(updated.map { it.id }) }
-                    }
-                },
-                onMove = { haptics.performHapticFeedback(HapticFeedbackType.ContextClick) },
-                modifier = Modifier.fillMaxWidth()
-            ) { index, preset, isDragging ->
-                key(preset.id, items.size) {
-                    val handleModifier = Modifier.draggableHandle(
-                        onDragStarted = { haptics.performHapticFeedback(HapticFeedbackType.LongPress) }
+        ReorderableGroupedColumn(
+            items = presets,
+            key = { it.id },
+            onReorder = { newOrder ->
+                containerPresetRepository?.let { repo ->
+                    coroutineScope.launch { repo.reorderPresets(newOrder.map { it.id }) }
+                }
+            },
+            onClick = { preset ->
+                presetToEdit = preset
+                showEditSheet = true
+            },
+            contentPadding = PaddingValues(top = 24.dp, bottom = 24.dp),
+            modifier = Modifier.fillMaxSize(),
+            header = {
+                item(key = "container_helper") {
+                    Text(
+                        text = "Quick-select containers on the home screen. Tap to edit, drag to reorder.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 4.dp, bottom = 12.dp)
                     )
-                    ContainerPresetRow(
-                        preset = preset,
-                        index = index,
-                        size = items.size,
-                        isDragging = isDragging,
-                        onClick = {
-                            presetToEdit = preset
-                            showEditSheet = true
-                        },
-                        modifier = handleModifier
+                }
+            },
+            footer = {
+                item(key = "container_buttons") {
+                    ContainerActionButtons(
+                        onReset = { showResetDialog = true },
+                        onAdd = { showAddSheet = true },
+                        modifier = Modifier.padding(top = 12.dp)
                     )
                 }
             }
-
-            val resetInteractionSource = remember { MutableInteractionSource() }
-            val addInteractionSource = remember { MutableInteractionSource() }
-
-            LaunchedEffect(resetInteractionSource) {
-                resetInteractionSource.interactions.collect { interaction ->
-                    when (interaction) {
-                        is PressInteraction.Press -> haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
-                        is PressInteraction.Release -> haptics.performHapticFeedback(HapticFeedbackType.Confirm)
-                        else -> {  }
-                    }
-                }
-            }
-
-            LaunchedEffect(addInteractionSource) {
-                addInteractionSource.interactions.collect { interaction ->
-                    when (interaction) {
-                        is PressInteraction.Press -> haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
-                        is PressInteraction.Release -> haptics.performHapticFeedback(HapticFeedbackType.Confirm)
-                        else -> {  }
-                    }
-                }
-            }
-
-            ButtonGroup(
-                modifier = Modifier.fillMaxWidth(),
-                overflowIndicator = {}
-            ) {
-                val scope = this
-                customItem(
-                    buttonGroupContent = {
-                        FilledTonalButton(
-                            onClick = {
-                                showResetDialog = true
-                            },
-                            colors = ButtonDefaults.filledTonalButtonColors(
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                            ),
-                            shapes = ButtonDefaults.shapes(),
-                            interactionSource = resetInteractionSource,
-                            modifier = with(scope) {
-                                Modifier
-                                    .weight(1f)
-                                    .height(56.dp)
-                                    .animateWidth(interactionSource = resetInteractionSource)
-                            }
-                        ) {
-                            Text(
-                                text = "Reset Defaults",
-                                maxLines = 1,
-                                softWrap = false
-                            )
-                        }
-                    },
-                    menuContent = {}
+        ) { preset ->
+            ContainerLeadingIcon(preset)
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = preset.name,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
-
-                customItem(
-                    buttonGroupContent = {
-                        Button(
-                            onClick = {
-                                showAddSheet = true
-                            },
-                            shapes = ButtonDefaults.shapes(),
-                            interactionSource = addInteractionSource,
-                            modifier = with(scope) {
-                                Modifier
-                                    .weight(1f)
-                                    .height(56.dp)
-                                    .animateWidth(interactionSource = addInteractionSource)
-                            }
-                        ) {
-                            Text(
-                                text = "Add Container",
-                                maxLines = 1,
-                                softWrap = false
-                            )
-                        }
-                    },
-                    menuContent = {}
+                Text(
+                    text = preset.getFormattedVolume(),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -272,74 +184,81 @@ fun ContainerPresetsScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun ContainerPresetRow(
-    preset: ContainerPreset,
-    index: Int,
-    size: Int,
-    isDragging: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier
+private fun ContainerActionButtons(
+    onReset: () -> Unit,
+    onAdd: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    val scale by animateFloatAsState(
-        targetValue = if (isDragging) 1.03f else 1f,
-        label = "containerDragScale"
-    )
+    val haptics = LocalHapticFeedback.current
+    val resetInteractionSource = remember { MutableInteractionSource() }
+    val addInteractionSource = remember { MutableInteractionSource() }
 
-    val tonalElevation by animateDpAsState(
-        targetValue = if (isDragging) 6.dp else 2.dp,
-        label = "tonalElevation"
-    )
-
-    val shadowElevation by animateDpAsState(
-        targetValue = if (isDragging) 6.dp else 0.dp,
-        label = "shadowElevation"
-    )
-
-    val targetCorners = groupCorners(index, size)
-    val topStart by animateDpAsState(targetCorners.topStart, label = "topStart")
-    val topEnd by animateDpAsState(targetCorners.topEnd, label = "topEnd")
-    val bottomStart by animateDpAsState(targetCorners.bottomStart, label = "bottomStart")
-    val bottomEnd by animateDpAsState(targetCorners.bottomEnd, label = "bottomEnd")
-
-    Surface(
-        tonalElevation = tonalElevation,
-        shadowElevation = shadowElevation,
-        onClick = onClick,
-        shape = RoundedCornerShape(topStart, topEnd, bottomEnd , bottomStart),
-        modifier = Modifier
-            .fillMaxWidth()
-            .scale(scale)
-            .padding(bottom = 2.dp)
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            ContainerLeadingIcon(preset)
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = preset.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = preset.getFormattedVolume(),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+    LaunchedEffect(resetInteractionSource) {
+        resetInteractionSource.interactions.collect { interaction ->
+            when (interaction) {
+                is PressInteraction.Press -> haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+                is PressInteraction.Release -> haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                else -> {}
             }
-            Icon(
-                imageVector = ImageVector.vectorResource(R.drawable.drag_handle_filled),
-                contentDescription = "Reorder",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = modifier.size(24.dp)
-            )
         }
+    }
+    LaunchedEffect(addInteractionSource) {
+        addInteractionSource.interactions.collect { interaction ->
+            when (interaction) {
+                is PressInteraction.Press -> haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+                is PressInteraction.Release -> haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                else -> {}
+            }
+        }
+    }
+
+    ButtonGroup(
+        modifier = modifier.fillMaxWidth(),
+        overflowIndicator = {}
+    ) {
+        val scope = this
+        customItem(
+            buttonGroupContent = {
+                FilledTonalButton(
+                    onClick = onReset,
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    ),
+                    shapes = ButtonDefaults.shapes(),
+                    interactionSource = resetInteractionSource,
+                    modifier = with(scope) {
+                        Modifier
+                            .weight(1f)
+                            .height(56.dp)
+                            .animateWidth(interactionSource = resetInteractionSource)
+                    }
+                ) {
+                    Text(text = "Reset Defaults", maxLines = 1, softWrap = false)
+                }
+            },
+            menuContent = {}
+        )
+        customItem(
+            buttonGroupContent = {
+                Button(
+                    onClick = onAdd,
+                    shapes = ButtonDefaults.shapes(),
+                    interactionSource = addInteractionSource,
+                    modifier = with(scope) {
+                        Modifier
+                            .weight(1f)
+                            .height(56.dp)
+                            .animateWidth(interactionSource = addInteractionSource)
+                    }
+                ) {
+                    Text(text = "Add Container", maxLines = 1, softWrap = false)
+                }
+            },
+            menuContent = {}
+        )
     }
 }
 

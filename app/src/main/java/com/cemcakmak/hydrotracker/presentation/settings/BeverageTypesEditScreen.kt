@@ -1,23 +1,13 @@
 package com.cemcakmak.hydrotracker.presentation.settings
 
-import androidx.compose.animation.core.animateDpAsState
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DragHandle
-import androidx.compose.material.icons.filled.PushPin
 import androidx.compose.material.icons.filled.RestartAlt
-import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.runtime.getValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
@@ -32,10 +22,10 @@ import com.cemcakmak.hydrotracker.presentation.common.AddCustomBeverageBottomShe
 import com.cemcakmak.hydrotracker.presentation.common.BeverageIcons
 import com.cemcakmak.hydrotracker.presentation.common.EditCustomBeverageBottomSheet
 import com.cemcakmak.hydrotracker.presentation.common.PresetBeverageBottomSheet
+import com.cemcakmak.hydrotracker.presentation.common.ReorderableGroupedColumn
 import com.cemcakmak.hydrotracker.ui.theme.HydroTrackerTheme
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
-import sh.calvin.reorderable.ReorderableColumn
 
 private sealed interface BeverageItem {
     data class Preset(val type: BeverageType) : BeverageItem
@@ -91,11 +81,15 @@ fun BeverageTypesEditScreen(
         customBeverageRepository?.getAll() ?: flowOf(emptyList())
     }.collectAsState(initial = emptyList())
 
-    // Local copy of the visible (reorderable) items; re-synced whenever prefs/customs emit.
-    var visibleItems by remember(beveragePrefs, customs) {
-        mutableStateOf(buildVisibleItems(beveragePrefs, customs))
-    }
+    val visibleItems = remember(beveragePrefs, customs) { buildVisibleItems(beveragePrefs, customs) }
     val hiddenPresets = remember(beveragePrefs) { buildHiddenPresets(beveragePrefs) }
+    val allItems = remember(visibleItems, hiddenPresets) {
+        buildList {
+            add(BeverageItem.Preset(BeverageType.WATER))   // pinned
+            addAll(visibleItems)
+            addAll(hiddenPresets.map { BeverageItem.Preset(it) })
+        }
+    }
 
     var showAddSheet by remember { mutableStateOf(false) }
     var editingCustom by remember { mutableStateOf<CustomBeverageEntity?>(null) }
@@ -114,194 +108,71 @@ fun BeverageTypesEditScreen(
     SettingsDetailScaffold(
         title = "Beverage Types",
         onNavigateBack = onNavigateBack,
-        paddingValues = paddingValues
+        paddingValues = paddingValues,
+        scrollable = false
     ) {
-        Column(
-            modifier = Modifier.padding(top = 24.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Text(
-                text = "Beverages offered in quick add. Tap to edit, drag to reorder.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 4.dp)
+        ReorderableGroupedColumn(
+            items = allItems,
+            key = { it.token() },
+            isPinned = { it is BeverageItem.Preset && it.type == BeverageType.WATER },
+            isHidden = { it is BeverageItem.Preset && it.type.name in beveragePrefs.hidden },
+            onReorder = { newVisible -> persist(newVisible, beveragePrefs.hidden) },
+            onClick = { item ->
+                when (item) {
+                    is BeverageItem.Preset -> presetForSheet = item.type
+                    is BeverageItem.Custom -> editingCustom = item.entity
+                }
+            },
+            contentPadding = PaddingValues(top = 24.dp, bottom = 24.dp),
+            modifier = Modifier.fillMaxSize(),
+            header = {
+                item(key = "beverage_helper") {
+                    Text(
+                        text = "Beverages offered in quick add. Tap to edit, drag to reorder.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 4.dp, bottom = 12.dp)
+                    )
+                }
+            },
+            footer = {
+                item(key = "beverage_buttons") {
+                    BeverageActionButtons(
+                        onReset = { showResetDialog = true },
+                        onAdd = { showAddSheet = true },
+                        modifier = Modifier.padding(top = 12.dp)
+                    )
+                }
+            }
+        ) { item ->
+            val iconRes = when (item) {
+                is BeverageItem.Preset -> item.type.iconResFilled
+                is BeverageItem.Custom -> BeverageIcons.resFor(item.entity.iconKey)
+            }
+            val name = when (item) {
+                is BeverageItem.Preset -> item.type.displayName
+                is BeverageItem.Custom -> item.entity.name
+            }
+            val multiplier = when (item) {
+                is BeverageItem.Preset -> item.type.hydrationMultiplier
+                is BeverageItem.Custom -> item.entity.hydrationMultiplier
+            }
+            Icon(
+                painter = painterResource(iconRes),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
             )
-
-            // WATER pinned + the reorderable visible items form one continuous group.
-            val visibleGroupSize = 1 + visibleItems.size
-            Column {
-                BeverageRow(
-                    iconRes = BeverageType.WATER.iconResFilled,
-                    name = BeverageType.WATER.displayName,
-                    subtitle = "100% hydration",
-                    shape = getGroupShape(0, visibleGroupSize)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.PushPin,
-                        contentDescription = "Pinned",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(24.dp)
-                    )
-                }
-
-                ReorderableColumn(
-                    list = visibleItems,
-                    onSettle = { fromIndex, toIndex ->
-                        val updated = visibleItems.toMutableList().apply { add(toIndex, removeAt(fromIndex)) }
-                        visibleItems = updated
-                        haptics.performHapticFeedback(HapticFeedbackType.Confirm)
-                        persist(updated, beveragePrefs.hidden)
-                    },
-                    onMove = { haptics.performHapticFeedback(HapticFeedbackType.ContextClick) },
-                    modifier = Modifier.fillMaxWidth()
-                ) { index, item, isDragging ->
-                    val handleModifier = Modifier.draggableHandle(
-                        onDragStarted = { haptics.performHapticFeedback(HapticFeedbackType.LongPress) }
-                    )
-                    val iconRes = when (item) {
-                        is BeverageItem.Preset -> item.type.iconResFilled
-                        is BeverageItem.Custom -> BeverageIcons.resFor(item.entity.iconKey)
-                    }
-                    val name = when (item) {
-                        is BeverageItem.Preset -> item.type.displayName
-                        is BeverageItem.Custom -> item.entity.name
-                    }
-                    val multiplier = when (item) {
-                        is BeverageItem.Preset -> item.type.hydrationMultiplier
-                        is BeverageItem.Custom -> item.entity.hydrationMultiplier
-                    }
-                    BeverageRow(
-                        iconRes = iconRes,
-                        name = name,
-                        subtitle = "${(multiplier * 100).toInt()}% hydration",
-                        shape = getGroupShape(index + 1, visibleGroupSize),
-                        isDragging = isDragging,
-                        onClick = {
-                            when (item) {
-                                is BeverageItem.Preset -> presetForSheet = item.type
-                                is BeverageItem.Custom -> editingCustom = item.entity
-                            }
-                        }
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.DragHandle,
-                            contentDescription = "Reorder",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = handleModifier.size(24.dp)
-                        )
-                    }
-                }
-            }
-
-            // Hidden presets
-            if (hiddenPresets.isNotEmpty()) {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Hidden",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(start = 4.dp, top = 4.dp)
+                    text = name,
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
-                Column {
-                    hiddenPresets.forEachIndexed { index, type ->
-                        BeverageRow(
-                            iconRes = type.iconResFilled,
-                            name = type.displayName,
-                            subtitle = "${(type.hydrationMultiplier * 100).toInt()}% hydration",
-                            shape = getGroupShape(index, hiddenPresets.size),
-                            dimmed = true,
-                            onClick = { presetForSheet = type }
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.VisibilityOff,
-                                contentDescription = "Hidden",
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-                    }
-                }
-            }
-
-            val resetInteractionSource = remember { MutableInteractionSource() }
-            val addInteractionSource = remember { MutableInteractionSource() }
-
-            LaunchedEffect(resetInteractionSource) {
-                resetInteractionSource.interactions.collect { interaction ->
-                    when (interaction) {
-                        is PressInteraction.Press -> haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
-                        is PressInteraction.Release -> haptics.performHapticFeedback(HapticFeedbackType.Confirm)
-                        else -> {  }
-                    }
-                }
-            }
-
-            LaunchedEffect(addInteractionSource) {
-                addInteractionSource.interactions.collect { interaction ->
-                    when (interaction) {
-                        is PressInteraction.Press -> haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
-                        is PressInteraction.Release -> haptics.performHapticFeedback(HapticFeedbackType.Confirm)
-                        else -> {  }
-                    }
-                }
-            }
-
-            ButtonGroup(
-                modifier = Modifier.fillMaxWidth(),
-                overflowIndicator = {}
-            ) {
-                val scope = this
-                customItem(
-                    buttonGroupContent = {
-                        FilledTonalButton(
-                            onClick = {
-                                showResetDialog = true
-                            },
-                            colors = ButtonDefaults.filledTonalButtonColors(
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer,
-                                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-                            ),
-                            shapes = ButtonDefaults.shapes(),
-                            interactionSource = resetInteractionSource,
-                            modifier = with(scope) {
-                                Modifier
-                                    .weight(1f)
-                                    .height(56.dp)
-                                    .animateWidth(interactionSource = resetInteractionSource)
-                            }
-                        ) {
-                            Text(
-                                text = "Reset Defaults",
-                                maxLines = 1,
-                                softWrap = false
-                            )
-                        }
-                    },
-                    menuContent = {}
-                )
-
-                customItem(
-                    buttonGroupContent = {
-                        Button(
-                            onClick = {
-                                showAddSheet = true
-                            },
-                            shapes = ButtonDefaults.shapes(),
-                            interactionSource = addInteractionSource,
-                            modifier = with(scope) {
-                                Modifier
-                                    .weight(1f)
-                                    .height(56.dp)
-                                    .animateWidth(interactionSource = addInteractionSource)
-                            }
-                        ) {
-                            Text(
-                                text = "Add Beverage",
-                                maxLines = 1,
-                                softWrap = false
-                            )
-                        }
-                    },
-                    menuContent = {}
+                Text(
+                    text = "${(multiplier * 100).toInt()}% hydration",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
@@ -405,68 +276,81 @@ fun BeverageTypesEditScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun BeverageRow(
-    iconRes: Int,
-    name: String,
-    subtitle: String,
-    shape: Shape,
-    dimmed: Boolean = false,
-    isDragging: Boolean = false,
-    onClick: (() -> Unit)? = null,
-    trailing: @Composable () -> Unit
+private fun BeverageActionButtons(
+    onReset: () -> Unit,
+    onAdd: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
-    val scale by animateFloatAsState(
-        targetValue = if (isDragging) 1.03f else 1f,
-        label = "beverageDragScale"
-    )
+    val haptics = LocalHapticFeedback.current
+    val resetInteractionSource = remember { MutableInteractionSource() }
+    val addInteractionSource = remember { MutableInteractionSource() }
 
-    val tonalElevation by animateDpAsState(
-        targetValue = if (isDragging) 6.dp else 2.dp,
-        label = "tonalElevation"
-    )
-
-    val modifier = Modifier
-        .fillMaxWidth()
-        .scale(scale)
-        .padding(bottom = 2.dp)
-        .alpha(if (dimmed) 0.6f else 1f)
-
-    val inner: @Composable () -> Unit = {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                painter = painterResource(iconRes),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp)
-            )
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = name,
-                    style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+    LaunchedEffect(resetInteractionSource) {
+        resetInteractionSource.interactions.collect { interaction ->
+            when (interaction) {
+                is PressInteraction.Press -> haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+                is PressInteraction.Release -> haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                else -> {}
             }
-            trailing()
+        }
+    }
+    LaunchedEffect(addInteractionSource) {
+        addInteractionSource.interactions.collect { interaction ->
+            when (interaction) {
+                is PressInteraction.Press -> haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+                is PressInteraction.Release -> haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                else -> {}
+            }
         }
     }
 
-    if (onClick != null) {
-        Surface(onClick = onClick, shape = shape, tonalElevation = tonalElevation, modifier = modifier) { inner() }
-    } else {
-        Surface(shape = shape, tonalElevation = tonalElevation, modifier = modifier) { inner() }
+    ButtonGroup(
+        modifier = modifier.fillMaxWidth(),
+        overflowIndicator = {}
+    ) {
+        val scope = this
+        customItem(
+            buttonGroupContent = {
+                FilledTonalButton(
+                    onClick = onReset,
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer,
+                        contentColor = MaterialTheme.colorScheme.onSecondaryContainer
+                    ),
+                    shapes = ButtonDefaults.shapes(),
+                    interactionSource = resetInteractionSource,
+                    modifier = with(scope) {
+                        Modifier
+                            .weight(1f)
+                            .height(56.dp)
+                            .animateWidth(interactionSource = resetInteractionSource)
+                    }
+                ) {
+                    Text(text = "Reset Defaults", maxLines = 1, softWrap = false)
+                }
+            },
+            menuContent = {}
+        )
+        customItem(
+            buttonGroupContent = {
+                Button(
+                    onClick = onAdd,
+                    shapes = ButtonDefaults.shapes(),
+                    interactionSource = addInteractionSource,
+                    modifier = with(scope) {
+                        Modifier
+                            .weight(1f)
+                            .height(56.dp)
+                            .animateWidth(interactionSource = addInteractionSource)
+                    }
+                ) {
+                    Text(text = "Add Beverage", maxLines = 1, softWrap = false)
+                }
+            },
+            menuContent = {}
+        )
     }
 }
 

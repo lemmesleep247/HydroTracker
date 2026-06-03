@@ -115,9 +115,6 @@ dependencies {
     // Health Connect
     implementation(libs.androidx.health.connect)
 
-    // Reorderable (drag-and-drop)
-    implementation(libs.reorderable)
-
     // Debug tools
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)

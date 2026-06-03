@@ -11,7 +11,6 @@ sealed interface NavigationRoutes : NavKey {
     @Serializable data object SettingsOld : NavigationRoutes
     @Serializable data object Profile : NavigationRoutes
     @Serializable data object HealthConnectData : NavigationRoutes
-    @Serializable data object BeverageTypes : NavigationRoutes
 
     @Serializable data object SettingsAppearance : NavigationRoutes
     @Serializable data object SettingsDisplay : NavigationRoutes
