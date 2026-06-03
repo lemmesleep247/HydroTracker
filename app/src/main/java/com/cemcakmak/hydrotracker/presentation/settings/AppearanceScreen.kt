@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
@@ -336,7 +335,7 @@ private fun DynamicColorsRow(
             thumbContent = if (themePreferences.colorSource == ColorSource.DYNAMIC_COLOR) {
                 {
                     Icon(
-                        imageVector = Icons.Filled.Check,
+                        imageVector = ImageVector.vectorResource(R.drawable.check_filled),
                         contentDescription = null,
                         modifier = Modifier.size(SwitchDefaults.IconSize),
                     )
@@ -396,7 +395,7 @@ private fun AmoledRow(
             thumbContent = if (themePreferences.usePureBlack) {
                 {
                     Icon(
-                        imageVector = Icons.Filled.Check,
+                        imageVector = ImageVector.vectorResource(R.drawable.check_filled),
                         contentDescription = null,
                         modifier = Modifier.size(SwitchDefaults.IconSize),
                     )
@@ -556,7 +555,7 @@ private fun NavigationBarSection(
                         thumbContent = if (autoHide) {
                             {
                                 Icon(
-                                    imageVector = Icons.Filled.Check,
+                                    imageVector = ImageVector.vectorResource(R.drawable.check_filled),
                                     contentDescription = null,
                                     modifier = Modifier.size(SwitchDefaults.IconSize),
                                 )

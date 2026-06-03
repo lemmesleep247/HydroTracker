@@ -16,16 +16,15 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Bedtime
-import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.filled.Schedule
-import androidx.compose.material.icons.filled.Spa
 import androidx.compose.material.icons.filled.WbSunny
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Surface
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -33,7 +32,6 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TimePicker
-import androidx.compose.material3.TimePickerState
 import androidx.compose.material3.ToggleButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTimePickerState
@@ -55,13 +53,16 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.cemcakmak.hydrotracker.R
 import com.cemcakmak.hydrotracker.data.models.ReminderStyle
 import com.cemcakmak.hydrotracker.data.models.UserProfile
 import com.cemcakmak.hydrotracker.notifications.HydroNotificationScheduler
+import com.cemcakmak.hydrotracker.notifications.NotificationContentProvider
 import com.cemcakmak.hydrotracker.notifications.NotificationPermissionManager
+import com.cemcakmak.hydrotracker.presentation.common.BlurMorph
 import com.cemcakmak.hydrotracker.ui.theme.HydroTrackerTheme
 import com.cemcakmak.hydrotracker.utils.WaterCalculator
 import kotlinx.coroutines.launch
@@ -147,6 +148,13 @@ fun NotificationsScreen(
             )
         }
 
+        // Notification preview
+        if (userProfile != null) {
+            NotificationPreviewCard(
+                currentStyle = userProfile.reminderStyle
+            )
+        }
+
         // Reminders toggle
         if (userProfile != null) {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -168,7 +176,7 @@ fun NotificationsScreen(
                                 imageVector = if (enabled) {
                                     ImageVector.vectorResource(R.drawable.notifications_filled)
                                 } else {
-                                    Icons.Default.Notifications
+                                    ImageVector.vectorResource(R.drawable.notifications)
                                 },
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.primary,
@@ -197,18 +205,20 @@ fun NotificationsScreen(
                                 }
                                 haptics.performHapticFeedback(hapticType)
                                 isRemindersEnabled = enabled
-                                coroutineScope.launch {
-                                    if (enabled) {
-                                        HydroNotificationScheduler.startNotifications(context, userProfile)
-                                    } else {
-                                        HydroNotificationScheduler.stopNotifications(context)
+                                if (!inPreview) {
+                                    coroutineScope.launch {
+                                        if (enabled) {
+                                            HydroNotificationScheduler.startNotifications(context, userProfile)
+                                        } else {
+                                            HydroNotificationScheduler.stopNotifications(context)
+                                        }
                                     }
                                 }
                             },
                             thumbContent = if (isRemindersEnabled) {
                                 {
                                     Icon(
-                                        imageVector = Icons.Filled.Check,
+                                        imageVector = ImageVector.vectorResource(R.drawable.check_filled),
                                         contentDescription = null,
                                         modifier = Modifier.size(SwitchDefaults.IconSize)
                                     )
@@ -226,7 +236,7 @@ fun NotificationsScreen(
                     haptics.performHapticFeedback(HapticFeedbackType.ToggleOn)
                     val updated = userProfile.copy(reminderStyle = newStyle)
                     onUserProfileUpdate(updated)
-                    if (isRemindersEnabled) {
+                    if (isRemindersEnabled && !inPreview) {
                         HydroNotificationScheduler.rescheduleNotifications(context, updated)
                     }
                 }
@@ -271,7 +281,7 @@ fun NotificationsScreen(
                         reminderInterval = newInterval
                     )
                     onUserProfileUpdate(updated)
-                    if (isRemindersEnabled) {
+                    if (isRemindersEnabled && !inPreview) {
                         HydroNotificationScheduler.rescheduleNotifications(context, updated)
                     }
                 }
@@ -297,7 +307,7 @@ fun NotificationsScreen(
                         reminderInterval = newInterval
                     )
                     onUserProfileUpdate(updated)
-                    if (isRemindersEnabled) {
+                    if (isRemindersEnabled && !inPreview) {
                         HydroNotificationScheduler.rescheduleNotifications(context, updated)
                     }
                 }
@@ -305,6 +315,134 @@ fun NotificationsScreen(
             },
             onDismiss = { showSleepPicker = false }
         )
+    }
+}
+
+@Composable
+private fun NotificationPreviewCard(
+    currentStyle: ReminderStyle
+) {
+    Column(
+        modifier = Modifier.padding(top = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp),
+            shape = RoundedCornerShape(30.dp),
+            tonalElevation = 2.dp
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                BlurMorph(targetState = currentStyle) { style, blurModifier ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(blurModifier),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        // Style name
+                        Text(
+                            text = style.getDisplayName(),
+                            style = MaterialTheme.typography.headlineSmall
+                        )
+
+                        // Style description
+                        Text(
+                            text = when (style) {
+                                ReminderStyle.GENTLE -> "Soft, encouraging reminders"
+                                ReminderStyle.MOTIVATING -> "Energetic, goal-focused reminders"
+                                ReminderStyle.MINIMAL -> "Simple, unobtrusive reminders"
+                            },
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    HorizontalDivider(modifier = Modifier.weight(1f))
+
+                    Text(
+                        text = "Sample notification",
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        style = MaterialTheme.typography.labelMediumEmphasized,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    HorizontalDivider(modifier = Modifier.weight(1f))
+                }
+
+                BlurMorph(targetState = currentStyle) { style, blurModifier ->
+                    val preview = remember(style) {
+                        NotificationContentProvider.getNotificationPreview(style)
+                    }
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(blurModifier),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
+                    ) {
+                        Text(
+                            text = preview.title,
+                            style = MaterialTheme.typography.titleSmallEmphasized
+                        )
+                        Text(
+                            modifier = Modifier.align(Alignment.CenterHorizontally),
+                            text = preview.message,
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    HorizontalDivider(modifier = Modifier.weight(1f))
+
+                    Text(
+                        text = "Fun Fact",
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                        style = MaterialTheme.typography.labelMediumEmphasized,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+
+                    HorizontalDivider(modifier = Modifier.weight(1f))
+                }
+
+                BlurMorph(targetState = currentStyle) { style, blurModifier ->
+                    val preview = remember(style) {
+                        NotificationContentProvider.getNotificationPreview(style)
+                    }
+
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(blurModifier),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = preview.extraContent,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.fillMaxWidth(),
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -421,7 +559,6 @@ private fun ReminderStyleSection(
     val haptics = LocalHapticFeedback.current
 
     Column(
-        modifier = Modifier.padding(top = 24.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         SettingsSectionHeader("Reminder style")
@@ -431,11 +568,7 @@ private fun ReminderStyleSection(
         ) {
             ReminderStyle.entries.forEach { style ->
                 val isSelected = currentStyle == style
-                val icon = when (style) {
-                    ReminderStyle.GENTLE -> Icons.Default.Spa
-                    ReminderStyle.MOTIVATING -> Icons.Default.NotificationsActive
-                    ReminderStyle.MINIMAL -> Icons.Default.Schedule
-                }
+
                 ToggleButton(
                     checked = isSelected,
                     onCheckedChange = {
@@ -444,36 +577,43 @@ private fun ReminderStyleSection(
                     },
                     modifier = Modifier.weight(1f)
                 ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = null,
-                            modifier = Modifier.size(18.dp)
-                        )
-                        Text(
-                            text = style.getDisplayName(),
-                            style = if (isSelected) {
-                                MaterialTheme.typography.labelLargeEmphasized
-                            } else {
-                                MaterialTheme.typography.labelLarge
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Crossfade(
+                                targetState = isSelected,
+                                animationSpec = MaterialTheme.motionScheme.slowEffectsSpec(),
+                                label = "darkModeToggleIcon_${style.name}"
+                            ) { selected ->
+                                Icon(
+                                    imageVector = when (style) {
+                                        ReminderStyle.GENTLE -> if (selected) ImageVector.vectorResource(R.drawable.spa_filled) else ImageVector.vectorResource(R.drawable.spa)
+                                        ReminderStyle.MOTIVATING -> if (selected) ImageVector.vectorResource(R.drawable.bolt_filled) else ImageVector.vectorResource(R.drawable.bolt)
+                                        ReminderStyle.MINIMAL -> if (selected) ImageVector.vectorResource(R.drawable.abc_filled) else ImageVector.vectorResource(R.drawable.abc)
+                                    },
+                                    contentDescription = null,
+                                    modifier = Modifier.size(18.dp)
+                                )
                             }
-                        )
-                        Text(
-                            text = when (style) {
-                                ReminderStyle.GENTLE -> "Soft & caring"
-                                ReminderStyle.MOTIVATING -> "Energetic"
-                                ReminderStyle.MINIMAL -> "Simple"
-                            },
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (isSelected) {
-                                MaterialTheme.colorScheme.onPrimary
-                            } else {
-                                MaterialTheme.colorScheme.onSurfaceVariant
-                            }
-                        )
+
+                            Text(
+                                text = when (style) {
+                                    ReminderStyle.GENTLE -> "Gentle"
+                                    ReminderStyle.MOTIVATING -> "Energetic"
+                                    ReminderStyle.MINIMAL -> "Simple"
+                                },
+                                style = if (isSelected) {
+                                    MaterialTheme.typography.labelLargeEmphasized
+                                } else {
+                                    MaterialTheme.typography.labelLarge
+                                }
+                            )
+                        }
                     }
                 }
             }
@@ -743,25 +883,27 @@ private fun TimePickerBottomSheet(
 @Preview(showBackground = true)
 @Composable
 fun NotificationsScreenPreview() {
-    val previewProfile = remember {
-        UserProfile(
-            name = "Preview",
-            gender = com.cemcakmak.hydrotracker.data.models.Gender.MALE,
-            ageGroup = com.cemcakmak.hydrotracker.data.models.AgeGroup.ADULT_31_50,
-            activityLevel = com.cemcakmak.hydrotracker.data.models.ActivityLevel.MODERATE,
-            wakeUpTime = "07:00",
-            sleepTime = "23:00",
-            dailyWaterGoal = 2500.0,
-            reminderInterval = 60,
-            isOnboardingCompleted = true,
-            reminderStyle = ReminderStyle.GENTLE
+    var previewProfile by remember {
+        mutableStateOf(
+            UserProfile(
+                name = "Preview",
+                gender = com.cemcakmak.hydrotracker.data.models.Gender.MALE,
+                ageGroup = com.cemcakmak.hydrotracker.data.models.AgeGroup.ADULT_31_50,
+                activityLevel = com.cemcakmak.hydrotracker.data.models.ActivityLevel.MODERATE,
+                wakeUpTime = "07:00",
+                sleepTime = "23:00",
+                dailyWaterGoal = 2500.0,
+                reminderInterval = 60,
+                isOnboardingCompleted = true,
+                reminderStyle = ReminderStyle.GENTLE
+            )
         )
     }
 
     HydroTrackerTheme {
         NotificationsScreen(
             userProfile = previewProfile,
-            onUserProfileUpdate = {}
+            onUserProfileUpdate = { previewProfile = it }
         )
     }
 }

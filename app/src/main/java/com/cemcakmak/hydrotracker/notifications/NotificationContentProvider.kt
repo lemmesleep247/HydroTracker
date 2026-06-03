@@ -4,7 +4,6 @@
 package com.cemcakmak.hydrotracker.notifications
 
 import com.cemcakmak.hydrotracker.data.models.ReminderStyle
-import kotlin.random.Random
 
 /**
  * Provides creative and personalized notification content
@@ -28,129 +27,161 @@ object NotificationContentProvider {
         }
     }
 
-    private fun getGentleContent(userName: String?, progress: Float, goal: Double): NotificationContent {
-        val titles = listOf(
-            "Gentle Hydration Reminder",
-            "Time for Some Water",
-            "Your Body is Calling",
-            "Gentle Hydration Break",
-            "Soft Reminder from HydroTracker",
-            "A Moment for Hydration",
-            "Water Wellness Check"
-        )
-
-        val messages = when {
-            progress < 0.25f -> listOf(
-                "Your body would love some refreshing water right now.",
-                "How about a sip of something refreshing?",
-                "A gentle reminder to nurture yourself with water.",
-                "Time to give your body the hydration it deserves.",
-                "Let's start building that healthy hydration habit.",
-                "Starting your day with water sets a healthy tone.",
-                "A small glass now can make a big difference later.",
-                "Your cells are asking for a little attention."
+    /**
+     * Get a preview of notification content for the settings screen.
+     * Returns decomposed title, message, and extra content (fact/pun) without
+     * combining them into a single body string.
+     */
+    fun getNotificationPreview(reminderStyle: ReminderStyle): NotificationPreview {
+        return when (reminderStyle) {
+            ReminderStyle.GENTLE -> NotificationPreview(
+                title = getGentleTitles().random(),
+                message = getGentleMessages(progress = 0.3f).random(),
+                extraLabel = "Fun fact",
+                extraContent = getRandomWaterFact()
             )
-            progress < 0.5f -> listOf(
-                "You're making great progress! Keep it flowing.",
-                "Halfway there! Your body appreciates every drop.",
-                "Looking good! Time for another refreshing moment.",
-                "Your hydration journey is flowing beautifully.",
-                "Keep up the wonderful work! Another sip awaits.",
-                "You're building a great rhythm today.",
-                "Steady progress is the best kind of progress.",
-                "Every sip is a step toward your goal."
+            ReminderStyle.MOTIVATING -> NotificationPreview(
+                title = getMotivatingTitles().random(),
+                message = getMotivatingMessages(progress = 0.3f).random(),
+                extraLabel = "Water pun",
+                extraContent = getRandomWaterPun()
             )
-            progress < 0.75f -> listOf(
-                "Almost there! You're doing wonderfully.",
-                "Your dedication to hydration is inspiring.",
-                "So close to your goal! Keep flowing forward.",
-                "Your body is thanking you for this care.",
-                "Beautiful progress! Just a bit more to go.",
-                "Your consistency is paying off.",
-                "You have come so far — don't stop now.",
-                "The finish line is closer than you think."
-            )
-            else -> listOf(
-                "You're so close to achieving your daily goal!",
-                "Final stretch! Your consistency is amazing.",
-                "Almost at the finish line! You've got this.",
-                "Your dedication today has been incredible.",
-                "One more push to complete your hydration victory.",
-                "Just a little more to reach your goal.",
-                "You should be proud of today's effort.",
-                "Victory is just a few sips away."
+            ReminderStyle.MINIMAL -> NotificationPreview(
+                title = getMinimalTitles().random(),
+                message = getMinimalMessages(progress = 0.3f),
+                extraLabel = "Extra content",
+                extraContent = "No extra content"
             )
         }
+    }
 
-        val funFacts = getRandomWaterFact()
+    private fun getGentleContent(userName: String?, progress: Float, goal: Double): NotificationContent {
+        val title = getGentleTitles().random()
+        val message = getGentleMessages(progress).random()
+        val funFact = getRandomWaterFact()
 
         return NotificationContent(
-            title = titles.random(),
-            message = "${messages.random()}\n\nDid you know? $funFacts",
+            title = title,
+            message = "$message\n\nDid you know? $funFact",
             progress = progress
         )
     }
 
-    private fun getMotivatingContent(userName: String?, progress: Float, goal: Double): NotificationContent {
-        val titles = listOf(
-            "Hydration Champion!",
-            "Water Warrior Alert!",
-            "Power Up with H2O!",
-            "Hydration Hero Time!",
-            "Fuel Your Success!",
-            "Time to Level Up!",
-            "Champion Mode: Activated"
+    private fun getGentleTitles(): List<String> = listOf(
+        "Gentle Hydration Reminder",
+        "Time for Some Water",
+        "Your Body is Calling",
+        "Gentle Hydration Break",
+        "Soft Reminder from HydroTracker",
+        "A Moment for Hydration",
+        "Water Wellness Check"
+    )
+
+    private fun getGentleMessages(progress: Float): List<String> = when {
+        progress < 0.25f -> listOf(
+            "Your body would love some refreshing water right now.",
+            "How about a sip of something refreshing?",
+            "A gentle reminder to nurture yourself with water.",
+            "Time to give your body the hydration it deserves.",
+            "Let's start building that healthy hydration habit.",
+            "Starting your day with water sets a healthy tone.",
+            "A small glass now can make a big difference later.",
+            "Your cells are asking for a little attention."
         )
+        progress < 0.5f -> listOf(
+            "You're making great progress! Keep it flowing.",
+            "Halfway there! Your body appreciates every drop.",
+            "Looking good! Time for another refreshing moment.",
+            "Your hydration journey is flowing beautifully.",
+            "Keep up the wonderful work! Another sip awaits.",
+            "You're building a great rhythm today.",
+            "Steady progress is the best kind of progress.",
+            "Every sip is a step toward your goal."
+        )
+        progress < 0.75f -> listOf(
+            "Almost there! You're doing wonderfully.",
+            "Your dedication to hydration is inspiring.",
+            "So close to your goal! Keep flowing forward.",
+            "Your body is thanking you for this care.",
+            "Beautiful progress! Just a bit more to go.",
+            "Your consistency is paying off.",
+            "You have come so far — don't stop now.",
+            "The finish line is closer than you think."
+        )
+        else -> listOf(
+            "You're so close to achieving your daily goal!",
+            "Final stretch! Your consistency is amazing.",
+            "Almost at the finish line! You've got this.",
+            "Your dedication today has been incredible.",
+            "One more push to complete your hydration victory.",
+            "Just a little more to reach your goal.",
+            "You should be proud of today's effort.",
+            "Victory is just a few sips away."
+        )
+    }
 
-        val messages = when {
-            progress < 0.25f -> listOf(
-                "Time to CRUSH your hydration goals! Let's GO!",
-                "Your SUCCESS starts with the next sip!",
-                "Champions hydrate! Are you ready to DOMINATE?",
-                "FUEL your potential with premium H2O!",
-                "Winners stay hydrated! Time to LEVEL UP!",
-                "First step to victory — grab some water!",
-                "Every champion starts with the basics. Hydrate!",
-                "Your competition is hydrating. Are you?"
-            )
-            progress < 0.5f -> listOf(
-                "UNSTOPPABLE! You're building momentum!",
-                "CRUSHING IT! Halfway to hydration victory!",
-                "POWERFUL progress! Keep that energy flowing!",
-                "AMAZING work! You're on fire today!",
-                "CHAMPION mindset! Push forward!",
-                "Momentum is building, keep it going!",
-                "You are stronger than your excuses. Drink up!",
-                "No limits, no excuses. Just hydration."
-            )
-            progress < 0.75f -> listOf(
-                "INCREDIBLE dedication! Victory is within reach!",
-                "OUTSTANDING! You're in the winner's zone!",
-                "PHENOMENAL! Final quarter — you've got this!",
-                "EXCELLENCE in action! Keep dominating!",
-                "LEGENDARY persistence! Almost at the summit!",
-                "The finish line is in sight!",
-                "Leave it all on the field. Hydrate!",
-                "Greatness is earned one sip at a time."
-            )
-            else -> listOf(
-                "FINAL PUSH! Greatness awaits!",
-                "SO CLOSE to TOTAL VICTORY!",
-                "MAXIMUM effort for MAXIMUM results!",
-                "ULTIMATE hydration hero! Finish strong!",
-                "LEGENDARY status incoming! Complete the mission!",
-                "Close it out strong, champion!",
-                "This is what separates good from great. Finish!",
-                "One last push. You were born for this."
-            )
-        }
-
-        val puns = getRandomWaterPun()
+    private fun getMotivatingContent(userName: String?, progress: Float, goal: Double): NotificationContent {
+        val title = getMotivatingTitles().random()
+        val message = getMotivatingMessages(progress).random()
+        val pun = getRandomWaterPun()
 
         return NotificationContent(
-            title = titles.random(),
-            message = "${messages.random()}\n\n$puns",
+            title = title,
+            message = "$message\n\n$pun",
             progress = progress
+        )
+    }
+
+    private fun getMotivatingTitles(): List<String> = listOf(
+        "Hydration Champion!",
+        "Water Warrior Alert!",
+        "Power Up with H2O!",
+        "Hydration Hero Time!",
+        "Fuel Your Success!",
+        "Time to Level Up!",
+        "Champion Mode: Activated"
+    )
+
+    private fun getMotivatingMessages(progress: Float): List<String> = when {
+        progress < 0.25f -> listOf(
+            "Time to CRUSH your hydration goals! Let's GO!",
+            "Your SUCCESS starts with the next sip!",
+            "Champions hydrate! Are you ready to DOMINATE?",
+            "FUEL your potential with premium H2O!",
+            "Winners stay hydrated! Time to LEVEL UP!",
+            "First step to victory — grab some water!",
+            "Every champion starts with the basics. Hydrate!",
+            "Your competition is hydrating. Are you?"
+        )
+        progress < 0.5f -> listOf(
+            "UNSTOPPABLE! You're building momentum!",
+            "CRUSHING IT! Halfway to hydration victory!",
+            "POWERFUL progress! Keep that energy flowing!",
+            "AMAZING work! You're on fire today!",
+            "CHAMPION mindset! Push forward!",
+            "Momentum is building, keep it going!",
+            "You are stronger than your excuses. Drink up!",
+            "No limits, no excuses. Just hydration."
+        )
+        progress < 0.75f -> listOf(
+            "INCREDIBLE dedication! Victory is within reach!",
+            "OUTSTANDING! You're in the winner's zone!",
+            "PHENOMENAL! Final quarter — you've got this!",
+            "EXCELLENCE in action! Keep dominating!",
+            "LEGENDARY persistence! Almost at the summit!",
+            "The finish line is in sight!",
+            "Leave it all on the field. Hydrate!",
+            "Greatness is earned one sip at a time."
+        )
+        else -> listOf(
+            "FINAL PUSH! Greatness awaits!",
+            "SO CLOSE to TOTAL VICTORY!",
+            "MAXIMUM effort for MAXIMUM results!",
+            "ULTIMATE hydration hero! Finish strong!",
+            "LEGENDARY status incoming! Complete the mission!",
+            "Close it out strong, champion!",
+            "This is what separates good from great. Finish!",
+            "One last push. You were born for this."
         )
     }
 
@@ -158,14 +189,21 @@ object NotificationContentProvider {
         val remaining = ((1 - progress) * goal).toInt()
 
         return NotificationContent(
-            title = "Water reminder",
-            message = when {
-                progress < 0.5f -> "Time to hydrate"
-                progress < 0.8f -> "Continue hydrating"
-                else -> "$remaining ml remaining"
-            },
+            title = getMinimalTitles().random(),
+            message = getMinimalMessages(progress),
             progress = progress
         )
+    }
+
+    private fun getMinimalTitles(): List<String> = listOf("Water reminder")
+
+    private fun getMinimalMessages(progress: Float): String = when {
+        progress < 0.5f -> "Time to hydrate"
+        progress < 0.8f -> "Continue hydrating"
+        else -> {
+            val remaining = ((1 - progress) * 2700.0).toInt()
+            "$remaining ml remaining"
+        }
     }
 
     private fun getRandomWaterFact(): String {
@@ -228,4 +266,15 @@ data class NotificationContent(
     val title: String,
     val message: String,
     val progress: Float
+)
+
+/**
+ * Data class for notification preview content shown in settings.
+ * Decomposed so title, message, and extra content (fact/pun) can be displayed separately.
+ */
+data class NotificationPreview(
+    val title: String,
+    val message: String,
+    val extraLabel: String,
+    val extraContent: String
 )
