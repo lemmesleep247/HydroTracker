@@ -3,16 +3,22 @@ package com.cemcakmak.hydrotracker.presentation.settings
 import android.app.Activity
 import android.app.Application
 import android.os.Bundle
+import android.text.format.DateFormat
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
@@ -20,13 +26,15 @@ import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Button
 import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -494,7 +502,7 @@ private fun PermissionStatusBanner(
                                 haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
                                 onRequestNotificationPermission()
                             },
-                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                            colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.error
                             )
                         ) {
@@ -538,7 +546,7 @@ private fun PermissionStatusBanner(
                                 haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
                                 onRequestExactAlarmPermission()
                             },
-                            colors = androidx.compose.material3.ButtonDefaults.buttonColors(
+                            colors = ButtonDefaults.buttonColors(
                                 containerColor = MaterialTheme.colorScheme.error
                             )
                         ) {
@@ -817,6 +825,7 @@ private fun TimePickerBottomSheet(
     onConfirm: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val context = LocalContext.current
     val sheetState = rememberModalBottomSheetState()
     val parts = initialTime.split(":")
     val initialHour = parts.getOrNull(0)?.toIntOrNull() ?: 7
@@ -824,7 +833,7 @@ private fun TimePickerBottomSheet(
     val timeState = rememberTimePickerState(
         initialHour = initialHour,
         initialMinute = initialMinute,
-        is24Hour = true
+        is24Hour = DateFormat.is24HourFormat(context)
     )
 
     ModalBottomSheet(
@@ -855,7 +864,8 @@ private fun TimePickerSheetContent(
             .fillMaxWidth()
             .padding(horizontal = 24.dp)
             .padding(bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp)
+        verticalArrangement = Arrangement.spacedBy(24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
             text = title,
@@ -866,34 +876,101 @@ private fun TimePickerSheetContent(
 
         TimePicker(state = timeState)
 
-        Row(
+        val cancelInteractionSource = remember { MutableInteractionSource() }
+        val saveInteractionSource = remember { MutableInteractionSource() }
+
+        LaunchedEffect(cancelInteractionSource) {
+            cancelInteractionSource.interactions.collect { interaction ->
+                when (interaction) {
+                    is PressInteraction.Press -> haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+                    is PressInteraction.Release -> haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                    else -> {  }
+                }
+            }
+        }
+
+        LaunchedEffect(saveInteractionSource) {
+            saveInteractionSource.interactions.collect { interaction ->
+                when (interaction) {
+                    is PressInteraction.Press -> haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+                    is PressInteraction.Release -> haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                    else -> {  }
+                }
+            }
+        }
+
+        ButtonGroup(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            overflowIndicator = {}
         ) {
-            OutlinedButton(
-                onClick = {
-                    haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
-                    onDismiss()
+            val scope = this
+            customItem(
+                buttonGroupContent = {
+                    FilledTonalButton(
+                        onClick = {
+                            onDismiss()
+                        },
+                        shapes = ButtonDefaults.shapes(),
+                        interactionSource = cancelInteractionSource,
+                        modifier = with(scope) {
+                            Modifier
+                                .weight(1f)
+                                .height(56.dp)
+                                .animateWidth(interactionSource = cancelInteractionSource)
+                        }
+                    ) {
+                        Icon(
+                            imageVector = ImageVector.vectorResource(R.drawable.cancel_filled),
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Cancel",
+                            maxLines = 1,
+                            softWrap = false
+                        )
+                    }
                 },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Cancel")
-            }
-            Button(
-                onClick = {
-                    haptics.performHapticFeedback(HapticFeedbackType.Confirm)
-                    val formatted = String.format(
-                        Locale.getDefault(),
-                        "%02d:%02d",
-                        timeState.hour,
-                        timeState.minute
-                    )
-                    onConfirm(formatted)
+                menuContent = {}
+            )
+
+            customItem(
+                buttonGroupContent = {
+                    Button(
+                        onClick = {
+                            val formatted = String.format(
+                                Locale.getDefault(),
+                                "%02d:%02d",
+                                timeState.hour,
+                                timeState.minute
+                            )
+                            onConfirm(formatted)
+                        },
+                        shapes = ButtonDefaults.shapes(),
+                        interactionSource = saveInteractionSource,
+                        modifier = with(scope) {
+                            Modifier
+                                .weight(1f)
+                                .height(56.dp)
+                                .animateWidth(interactionSource = saveInteractionSource)
+                        }
+                    ) {
+                        Icon(
+                            imageVector = ImageVector.vectorResource(R.drawable.save_fill),
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Save",
+                            maxLines = 1,
+                            softWrap = false
+                        )
+                    }
                 },
-                modifier = Modifier.weight(1f)
-            ) {
-                Text("Save")
-            }
+                menuContent = {}
+            )
         }
     }
 }

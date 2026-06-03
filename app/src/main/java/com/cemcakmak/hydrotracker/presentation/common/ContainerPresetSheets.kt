@@ -144,22 +144,6 @@ private fun EditContainerPresetSheetContent(
         val deleteInteractionSource = remember { MutableInteractionSource() }
         val saveInteractionSource = remember { MutableInteractionSource() }
 
-        // Track pressed states for shape animation
-        val isDeletePressed by deleteInteractionSource.collectIsPressedAsState()
-        val isSavePressed by saveInteractionSource.collectIsPressedAsState()
-
-        // Animate corner radius: pill (50.dp) -> rounded rectangle (16.dp) when pressed
-        val deleteCornerRadius by animateDpAsState(
-            targetValue = if (isDeletePressed) 16.dp else 50.dp,
-            animationSpec = spring(),
-            label = "deleteCornerRadius"
-        )
-        val saveCornerRadius by animateDpAsState(
-            targetValue = if (isSavePressed) 16.dp else 50.dp,
-            animationSpec = spring(),
-            label = "saveCornerRadius"
-        )
-
         LaunchedEffect(deleteInteractionSource) {
             deleteInteractionSource.interactions.collect { interaction ->
                 when (interaction) {
@@ -195,7 +179,7 @@ private fun EditContainerPresetSheetContent(
                             containerColor = MaterialTheme.colorScheme.errorContainer,
                             contentColor = MaterialTheme.colorScheme.onErrorContainer
                         ),
-                        shape = RoundedCornerShape(deleteCornerRadius),
+                        shapes = ButtonDefaults.shapes(),
                         interactionSource = deleteInteractionSource,
                         modifier = with(scope) {
                             Modifier
@@ -234,7 +218,7 @@ private fun EditContainerPresetSheetContent(
                                 onSave(trimmedName, volume)
                             }
                         },
-                        shape = RoundedCornerShape(saveCornerRadius),
+                        shapes = ButtonDefaults.shapes(),
                         interactionSource = saveInteractionSource,
                         modifier = with(scope) {
                             Modifier
