@@ -1,5 +1,6 @@
 package com.cemcakmak.hydrotracker.presentation.settings
 
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -7,10 +8,12 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
@@ -25,11 +28,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import com.cemcakmak.hydrotracker.R
 import com.cemcakmak.hydrotracker.data.models.ActivityLevel
 import com.cemcakmak.hydrotracker.data.models.AgeGroup
 import com.cemcakmak.hydrotracker.data.models.DarkModePreference
@@ -62,72 +68,108 @@ fun ReminderIntervalScreen(
             // Preview card
             ReminderSchedulePreviewCard(
                 themePreferences = themePreferences,
-                previewText = previewText
+                previewText = previewText,
+                reminderIntervalMode = userProfile.reminderIntervalMode,
+                dayEndMode = userProfile.dayEndMode
             )
 
             // Mode selector
-            SettingsSectionHeader("Mode")
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                ReminderIntervalMode.entries.forEach { mode ->
-                    val isSelected = userProfile.reminderIntervalMode == mode
+                SettingsSectionHeader("Mode")
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    ReminderIntervalMode.entries.forEach { mode ->
+                        val isSelected = userProfile.reminderIntervalMode == mode
 
-                    ToggleButton(
-                        checked = isSelected,
-                        onCheckedChange = {
-                            haptics.performHapticFeedback(HapticFeedbackType.ToggleOn)
-                            val newInterval = WaterCalculator.calculateReminderInterval(
-                                wakeUpTime = userProfile.wakeUpTime,
-                                sleepTime = userProfile.sleepTime,
-                                dailyGoal = userProfile.dailyWaterGoal,
-                                reminderIntervalMode = mode,
-                                customReminderInterval = userProfile.customReminderInterval
-                            )
+                        ToggleButton(
+                            checked = isSelected,
+                            onCheckedChange = {
+                                haptics.performHapticFeedback(HapticFeedbackType.ToggleOn)
+                                val newInterval = WaterCalculator.calculateReminderInterval(
+                                    wakeUpTime = userProfile.wakeUpTime,
+                                    sleepTime = userProfile.sleepTime,
+                                    dailyGoal = userProfile.dailyWaterGoal,
+                                    reminderIntervalMode = mode,
+                                    customReminderInterval = userProfile.customReminderInterval
+                                )
+                                onUserProfileUpdate(
+                                    userProfile.copy(
+                                        reminderIntervalMode = mode,
+                                        reminderInterval = newInterval
+                                    )
+                                )
+                            },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Crossfade(
+                                    targetState = isSelected,
+                                    animationSpec = MaterialTheme.motionScheme.slowEffectsSpec(),
+                                    label = "modeIcon_${mode.getDisplayName()}"
+                                ) { selected ->
+                                    Icon(
+                                        imageVector = when (mode) {
+                                            ReminderIntervalMode.AUTOMATIC -> if (selected) ImageVector.vectorResource(
+                                                R.drawable.automation_filled
+                                            ) else ImageVector.vectorResource(R.drawable.automation)
+
+                                            ReminderIntervalMode.CUSTOM -> if (selected) ImageVector.vectorResource(
+                                                R.drawable.tune_filled
+                                            ) else ImageVector.vectorResource(R.drawable.tune)
+                                        },
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+
+                                Text(
+                                    text = mode.getDisplayName(),
+                                    style = if (isSelected) {
+                                        MaterialTheme.typography.labelLargeEmphasized
+                                    } else {
+                                        MaterialTheme.typography.labelLarge
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Custom interval picker
+                if (userProfile.reminderIntervalMode == ReminderIntervalMode.CUSTOM) {
+                    CustomIntervalPicker(
+                        currentInterval = userProfile.customReminderInterval,
+                        onIntervalChange = { newInterval ->
                             onUserProfileUpdate(
                                 userProfile.copy(
-                                    reminderIntervalMode = mode,
+                                    customReminderInterval = newInterval,
                                     reminderInterval = newInterval
                                 )
                             )
-                        },
-                        modifier = Modifier.weight(1f)
-                    ) {
-                        Text(
-                            text = mode.getDisplayName(),
-                            style = if (isSelected) {
-                                MaterialTheme.typography.labelLargeEmphasized
-                            } else {
-                                MaterialTheme.typography.labelLarge
-                            }
-                        )
-                    }
+                        }
+                    )
                 }
             }
 
-            // Custom interval picker
-            if (userProfile.reminderIntervalMode == ReminderIntervalMode.CUSTOM) {
-                CustomIntervalPicker(
-                    currentInterval = userProfile.customReminderInterval,
-                    onIntervalChange = { newInterval ->
-                        onUserProfileUpdate(
-                            userProfile.copy(
-                                customReminderInterval = newInterval,
-                                reminderInterval = newInterval
-                            )
-                        )
+
+            Column(
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                DayEndSection(
+                    currentMode = userProfile.dayEndMode,
+                    onModeChange = { newMode ->
+                        haptics.performHapticFeedback(HapticFeedbackType.ToggleOn)
+                        onUserProfileUpdate(userProfile.copy(dayEndMode = newMode))
                     }
                 )
             }
-
-            DayEndSection(
-                currentMode = userProfile.dayEndMode,
-                onModeChange = { newMode ->
-                    haptics.performHapticFeedback(HapticFeedbackType.ToggleOn)
-                    onUserProfileUpdate(userProfile.copy(dayEndMode = newMode))
-                }
-            )
         }
     }
 }
@@ -135,7 +177,9 @@ fun ReminderIntervalScreen(
 @Composable
 private fun ReminderSchedulePreviewCard(
     themePreferences: ThemePreferences,
-    previewText: String
+    previewText: String,
+    reminderIntervalMode: ReminderIntervalMode,
+    dayEndMode: DayEndMode
 ) {
     val isDark = when (themePreferences.darkMode) {
         DarkModePreference.DARK -> true
@@ -147,6 +191,16 @@ private fun ReminderSchedulePreviewCard(
         BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
     } else {
         null
+    }
+
+    val modeExplanation = when (reminderIntervalMode) {
+        ReminderIntervalMode.AUTOMATIC -> "Reminders are spaced automatically based on your daily goal and active hours."
+        ReminderIntervalMode.CUSTOM -> "Reminders are sent at your chosen fixed interval between wake-up and sleep."
+    }
+
+    val dayEndExplanation = when (dayEndMode) {
+        DayEndMode.SLEEP_TIME -> "Your day ends at sleep time. Daily progress resets then."
+        DayEndMode.MIDNIGHT -> "Your day ends at midnight, matching the calendar day."
     }
 
     Surface(
@@ -164,12 +218,12 @@ private fun ReminderSchedulePreviewCard(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            BlurMorph(targetState = previewText) { previewText, blurModifier ->
+            BlurMorph(targetState = previewText) { text, blurModifier ->
                 Text(
                     modifier = Modifier
                         .fillMaxWidth()
                         .then(blurModifier),
-                    text = previewText,
+                    text = text,
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center
                 )
@@ -191,12 +245,12 @@ private fun ReminderSchedulePreviewCard(
                 HorizontalDivider(modifier = Modifier.weight(1f))
             }
 
-            BlurMorph(targetState = previewText) { previewText, blurModifier ->
+            BlurMorph(targetState = modeExplanation) { text, blurModifier ->
                 Text(
                     modifier = Modifier
                         .fillMaxWidth()
                         .then(blurModifier),
-                    text = previewText,
+                    text = text,
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center
                 )
@@ -218,12 +272,12 @@ private fun ReminderSchedulePreviewCard(
                 HorizontalDivider(modifier = Modifier.weight(1f))
             }
 
-            BlurMorph(targetState = previewText) { previewText, blurModifier ->
+            BlurMorph(targetState = dayEndExplanation) { text, blurModifier ->
                 Text(
                     modifier = Modifier
                         .fillMaxWidth()
                         .then(blurModifier),
-                    text = previewText,
+                    text = text,
                     style = MaterialTheme.typography.bodyMedium,
                     textAlign = TextAlign.Center
                 )
@@ -393,4 +447,5 @@ fun ReminderIntervalScreenPreview() {
             onUserProfileUpdate = { previewProfile = it }
         )
     }
+
 }

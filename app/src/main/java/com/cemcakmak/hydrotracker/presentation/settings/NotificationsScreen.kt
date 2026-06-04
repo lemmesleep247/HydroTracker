@@ -668,43 +668,38 @@ private fun ReminderStyleSection(
                     },
                     modifier = Modifier.weight(1f)
                 ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
-                        ) {
-                            Crossfade(
-                                targetState = isSelected,
-                                animationSpec = MaterialTheme.motionScheme.slowEffectsSpec(),
-                                label = "darkModeToggleIcon_${style.name}"
-                            ) { selected ->
-                                Icon(
-                                    imageVector = when (style) {
-                                        ReminderStyle.GENTLE -> if (selected) ImageVector.vectorResource(R.drawable.spa_filled) else ImageVector.vectorResource(R.drawable.spa)
-                                        ReminderStyle.MOTIVATING -> if (selected) ImageVector.vectorResource(R.drawable.bolt_filled) else ImageVector.vectorResource(R.drawable.bolt)
-                                        ReminderStyle.MINIMAL -> if (selected) ImageVector.vectorResource(R.drawable.abc_filled) else ImageVector.vectorResource(R.drawable.abc)
-                                    },
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
-                            }
-
-                            Text(
-                                text = when (style) {
-                                    ReminderStyle.GENTLE -> "Gentle"
-                                    ReminderStyle.MOTIVATING -> "Energetic"
-                                    ReminderStyle.MINIMAL -> "Simple"
+                        Crossfade(
+                            targetState = isSelected,
+                            animationSpec = MaterialTheme.motionScheme.slowEffectsSpec(),
+                            label = "darkModeToggleIcon_${style.name}"
+                        ) { selected ->
+                            Icon(
+                                imageVector = when (style) {
+                                    ReminderStyle.GENTLE -> if (selected) ImageVector.vectorResource(R.drawable.spa_filled) else ImageVector.vectorResource(R.drawable.spa)
+                                    ReminderStyle.MOTIVATING -> if (selected) ImageVector.vectorResource(R.drawable.bolt_filled) else ImageVector.vectorResource(R.drawable.bolt)
+                                    ReminderStyle.MINIMAL -> if (selected) ImageVector.vectorResource(R.drawable.abc_filled) else ImageVector.vectorResource(R.drawable.abc)
                                 },
-                                style = if (isSelected) {
-                                    MaterialTheme.typography.labelLargeEmphasized
-                                } else {
-                                    MaterialTheme.typography.labelLarge
-                                }
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
                             )
                         }
+
+                        Text(
+                            text = when (style) {
+                                ReminderStyle.GENTLE -> "Gentle"
+                                ReminderStyle.MOTIVATING -> "Energetic"
+                                ReminderStyle.MINIMAL -> "Simple"
+                            },
+                            style = if (isSelected) {
+                                MaterialTheme.typography.labelLargeEmphasized
+                            } else {
+                                MaterialTheme.typography.labelLarge
+                            }
+                        )
                     }
                 }
             }
