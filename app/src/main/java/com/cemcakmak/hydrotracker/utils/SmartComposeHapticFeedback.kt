@@ -26,8 +26,15 @@ class SmartComposeHapticFeedback(private val context: Context) : HapticFeedback 
         HapticFeedbackType.SegmentTick -> SmartHapticToken.SegmentTick
         HapticFeedbackType.SegmentFrequentTick -> SmartHapticToken.SegmentFrequentTick
         HapticFeedbackType.Confirm -> SmartHapticToken.Confirm
+        HapticFeedbackType.Reject -> SmartHapticToken.Reject
         HapticFeedbackType.ContextClick -> SmartHapticToken.ContextClick
         HapticFeedbackType.ToggleOn -> SmartHapticToken.ToggleOn
+        HapticFeedbackType.ToggleOff -> SmartHapticToken.ToggleOff
+        HapticFeedbackType.GestureEnd -> SmartHapticToken.GestureEnd
+        HapticFeedbackType.GestureThresholdActivate -> SmartHapticToken.GestureThresholdActive
+        HapticFeedbackType.VirtualKey -> SmartHapticToken.VirtualKey
+        // Tokens with no Compose HapticFeedbackType equivalent (ClockTick, DragStart, GestureStart,
+        // GestureThresholdDeactive, VirtualKeyRelease) must be played via SmartHaptics.perform(...).
         else -> null
     }
 }

@@ -29,14 +29,13 @@ import androidx.annotation.RequiresApi
 object SmartHaptics {
 
     // OEMs known to have broken or generic HapticFeedbackConstants mapping for 3rd-party apps.
-    private val COMPATIBLE_OEM_SET = setOf(
-        "google",
-        "samsung",
+    private val BROKEN_OEM_SET = setOf(
+        "xiaomi"
     )
 
     // Whether the current device is from an OEM with known broken constant mapping.
     val isBrokenOem: Boolean
-        get() = Build.MANUFACTURER.lowercase() !in COMPATIBLE_OEM_SET
+        get() = Build.MANUFACTURER.lowercase() in BROKEN_OEM_SET
 
     /**
      * Play a haptic effect for the given [token].
