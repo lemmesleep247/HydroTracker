@@ -49,6 +49,7 @@ import com.cemcakmak.hydrotracker.presentation.history.HistoryScreen
 import com.cemcakmak.hydrotracker.presentation.profile.ProfileScreen
 import com.cemcakmak.hydrotracker.presentation.settings.SettingsScreen
 import com.cemcakmak.hydrotracker.presentation.settings.SettingsHubScreen
+import com.cemcakmak.hydrotracker.presentation.settings.AboutScreen
 import com.cemcakmak.hydrotracker.presentation.settings.AppearanceScreen
 import com.cemcakmak.hydrotracker.presentation.settings.DisplayLocaleScreen
 import com.cemcakmak.hydrotracker.presentation.settings.HydrationHealthScreen
@@ -60,8 +61,8 @@ import com.cemcakmak.hydrotracker.presentation.settings.ReminderIntervalScreen
 import com.cemcakmak.hydrotracker.presentation.settings.DeveloperOptionsScreen
 import com.cemcakmak.hydrotracker.presentation.settings.HapticsLabScreen
 import com.cemcakmak.hydrotracker.presentation.settings.HapticsTestScreen
+import com.cemcakmak.hydrotracker.presentation.settings.LicensesScreen
 import com.cemcakmak.hydrotracker.presentation.settings.SupportDevelopmentScreen
-import com.cemcakmak.hydrotracker.presentation.settings.PlaceholderScreen
 import com.cemcakmak.hydrotracker.presentation.settings.HealthConnectDataScreen
 import com.cemcakmak.hydrotracker.presentation.onboarding.*
 import com.cemcakmak.hydrotracker.notifications.*
@@ -236,6 +237,7 @@ fun HydroTrackerApp(
     var quickAddWasPop by remember { mutableStateOf(false) }
     var notificationsWasPop by remember { mutableStateOf(false) }
     var developerOptionsWasPop by remember { mutableStateOf(false) }
+    var aboutWasPop by remember { mutableStateOf(false) }
 
     LaunchedEffect(isOnboardingCompleted, userProfile) {
         isLoading = false
@@ -569,7 +571,17 @@ fun HydroTrackerApp(
                             SupportDevelopmentScreen(onNavigateBack = popBackStack)
                         }
                         entry<NavigationRoutes.SettingsAbout> {
-                            PlaceholderScreen(title = "About", onNavigateBack = popBackStack)
+                            AboutScreen(
+                                wasPop = aboutWasPop,
+                                onNavigateBack = popBackStack,
+                                onNavigateToLicenses = {
+                                    aboutWasPop = true
+                                    backStack.add(NavigationRoutes.SettingsLicenses)
+                                }
+                            )
+                        }
+                        entry<NavigationRoutes.SettingsLicenses> {
+                            LicensesScreen(onNavigateBack = popBackStack)
                         }
                         entry<NavigationRoutes.SettingsDeveloper> {
                             DeveloperOptionsScreen(

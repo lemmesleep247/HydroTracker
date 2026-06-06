@@ -1,0 +1,367 @@
+package com.cemcakmak.hydrotracker.presentation.settings
+
+import android.content.ActivityNotFoundException
+import android.content.Context
+import android.content.Intent
+import android.widget.Toast
+import androidx.compose.animation.EnterExitState
+import androidx.compose.animation.core.animateDp
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
+import androidx.navigation3.ui.LocalNavAnimatedContentScope
+import com.cemcakmak.hydrotracker.BuildConfig
+import com.cemcakmak.hydrotracker.R
+import com.cemcakmak.hydrotracker.ui.theme.HydroTrackerTheme
+
+private const val URL_GITHUB_PROFILE = "https://github.com/Econ01"
+
+@Composable
+fun AboutScreen(
+    wasPop: Boolean = false,
+    onNavigateBack: () -> Unit = {},
+    onNavigateToLicenses: () -> Unit = {}
+) {
+    val context = LocalContext.current
+    val haptics = LocalHapticFeedback.current
+
+    val isPreview = LocalInspectionMode.current
+    val shouldApplyDepth = !isPreview && wasPop
+
+    val blur by if (shouldApplyDepth) {
+        val animatedContentScope = LocalNavAnimatedContentScope.current
+        animatedContentScope.transition.animateDp(
+            transitionSpec = { tween(400) },
+            label = "aboutEnterBlur"
+        ) { state -> if (state == EnterExitState.PreEnter) 8.dp else 0.dp }
+    } else {
+        remember { mutableStateOf(0.dp) }
+    }
+
+    val scrimAlpha by if (shouldApplyDepth) {
+        val animatedContentScope = LocalNavAnimatedContentScope.current
+        animatedContentScope.transition.animateFloat(
+            transitionSpec = { tween(400) },
+            label = "aboutEnterScrim"
+        ) { state -> if (state == EnterExitState.PreEnter) 0.4f else 0f }
+    } else {
+        remember { mutableFloatStateOf(0f) }
+    }
+
+    val scrimColor = if (MaterialTheme.colorScheme.surface.luminance() < 0.5f) Color.White else Color.Black
+
+    // Which document sheet is open (null = none).
+    var openDoc by remember { mutableStateOf<DocSheet?>(null) }
+
+    fun openSheet(doc: DocSheet) {
+        haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+        openDoc = doc
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.fillMaxSize().blur(blur)) {
+            SettingsDetailScaffold(
+                title = "About",
+                onNavigateBack = onNavigateBack
+            ) {
+                VersionHero()
+
+                // Contributors
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    SettingsSectionHeader("Contributors")
+                    SettingsGroupCard(index = 0, size = 1) {
+                        ContributorRow(
+                            avatar = R.drawable.econ01,
+                            name = "Ali Cem Çakmak",
+                            role = "Creator & maintainer",
+                            bio = "Indie Android developer focused on clean, privacy-respecting apps.",
+                            onOpenGitHub = {
+                                haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+                                openUrl(context, URL_GITHUB_PROFILE)
+                            }
+                        )
+                    }
+                }
+
+                // Information
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    SettingsSectionHeader("Information")
+                    Column {
+                        AboutRow(
+                            index = 0,
+                            size = 5,
+                            icon = ImageVector.vectorResource(R.drawable.article_filled),
+                            title = "Changelog",
+                            description = "What's new in each version",
+                            onClick = { openSheet(DocSheet("Changelog", "CHANGELOG.md")) }
+                        )
+                        AboutRow(
+                            index = 1,
+                            size = 5,
+                            icon = ImageVector.vectorResource(R.drawable.science_filled),
+                            title = "Sources & Research",
+                            description = "Scientific sources behind the app",
+                            onClick = { openSheet(DocSheet("Sources & Research", "sources.md")) }
+                        )
+                        AboutRow(
+                            index = 2,
+                            size = 5,
+                            icon = ImageVector.vectorResource(R.drawable.security_filled),
+                            title = "Privacy Policy",
+                            description = "How your data is handled",
+                            onClick = { openSheet(DocSheet("Privacy Policy", "privacy-policy.md")) }
+                        )
+                        AboutRow(
+                            index = 3,
+                            size = 5,
+                            icon = ImageVector.vectorResource(R.drawable.license_filled),
+                            title = "License",
+                            description = "HydroTracker's open-source license",
+                            onClick = { openSheet(DocSheet("License", "LICENSE.md")) }
+                        )
+                        AboutRow(
+                            index = 4,
+                            size = 5,
+                            icon = ImageVector.vectorResource(R.drawable.signature_filled),
+                            title = "Third-party licenses",
+                            description = "Open-source libraries we depend on",
+                            showChevron = true,
+                            onClick = {
+                                haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+                                onNavigateToLicenses()
+                            }
+                        )
+                    }
+                }
+            }
+        }
+
+        if (scrimAlpha > 0f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .scale(1.3f)
+                    .background(scrimColor.copy(alpha = scrimAlpha))
+            )
+        }
+    }
+
+    openDoc?.let { doc ->
+        MarkdownBottomSheet(
+            title = doc.title,
+            assetFileName = doc.asset,
+            onDismiss = { openDoc = null }
+        )
+    }
+}
+
+@Composable
+private fun VersionHero() {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 24.dp),
+        shape = RoundedCornerShape(30.dp),
+        tonalElevation = 2.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(18.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Column(modifier = Modifier.padding(start = 6.dp)) {
+                Text(
+                    text = "HydroTracker",
+                    style = MaterialTheme.typography.headlineLargeEmphasized
+                )
+
+                Text(
+                    text = "Open source water intake tracker.",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(space = 12.dp)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(30.dp),
+                    color = MaterialTheme.colorScheme.tertiary
+                ) {
+                    Text(
+                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp),
+                        text = "Version: ${BuildConfig.VERSION_NAME}",
+                        style = MaterialTheme.typography.bodyMediumEmphasized,
+                    )
+                }
+
+                Surface(
+                    shape = RoundedCornerShape(30.dp),
+                    color = MaterialTheme.colorScheme.secondary
+                ) {
+                    Text(
+                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 12.dp),
+                        text = "Build Number: ${BuildConfig.VERSION_CODE}",
+                        style = MaterialTheme.typography.bodyMediumEmphasized,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Suppress("SameParameterValue")
+@Composable
+private fun ContributorRow(
+    avatar: Int,
+    name: String,
+    role: String,
+    bio: String,
+    onOpenGitHub: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Image(
+            painter = painterResource(avatar),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .size(56.dp)
+                .clip(CircleShape)
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(text = name, style = MaterialTheme.typography.titleLargeEmphasized)
+            Text(
+                text = role,
+                style = MaterialTheme.typography.bodyMediumEmphasized,
+                color = MaterialTheme.colorScheme.tertiary
+            )
+            Text(
+                text = bio,
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+        IconButton(
+            modifier = Modifier.size(34.dp),
+            onClick = onOpenGitHub
+        ) {
+            Icon(
+                imageVector = ImageVector.vectorResource(R.drawable.github),
+                contentDescription = "Open GitHub profile",
+                tint = MaterialTheme.colorScheme.primary
+            )
+        }
+    }
+}
+
+@Composable
+private fun AboutRow(
+    index: Int,
+    size: Int,
+    icon: ImageVector,
+    title: String,
+    description: String,
+    showChevron: Boolean = false,
+    onClick: () -> Unit
+) {
+    SettingsGroupCard(index = index, size = size, onClick = onClick) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = title, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            if (showChevron) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+private data class DocSheet(val title: String, val asset: String)
+
+@Suppress("SameParameterValue")
+private fun openUrl(context: Context, url: String) {
+    try {
+        context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri()))
+    } catch (_: ActivityNotFoundException) {
+        Toast.makeText(context, "No app found to open this link", Toast.LENGTH_SHORT).show()
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun AboutScreenPreview() {
+    HydroTrackerTheme {
+        AboutScreen()
+    }
+}
