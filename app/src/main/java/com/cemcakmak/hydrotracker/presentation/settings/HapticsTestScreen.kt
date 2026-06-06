@@ -18,12 +18,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.ToggleButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateMapOf
@@ -112,44 +112,79 @@ fun HapticsTestScreen(
 
         DeviceInfoSection(themePreferences = themePreferences)
 
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SettingsSectionHeader("Play mode")
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
                 PlayMode.entries.forEach { mode ->
-                    FilterChip(
-                        selected = playMode == mode,
-                        onClick = { playMode = mode },
-                        label = { Text(mode.label) }
-                    )
+                    val isSelected = playMode == mode
+                    ToggleButton(
+                        checked = isSelected,
+                        onCheckedChange = {
+                            haptics.performHapticFeedback(HapticFeedbackType.ToggleOn)
+                            playMode = mode
+                        },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(
+                            text = mode.label,
+                            style = if (isSelected) {
+                                MaterialTheme.typography.labelLargeEmphasized
+                            } else {
+                                MaterialTheme.typography.labelLarge
+                            }
+                        )
+                    }
                 }
             }
         }
 
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SettingsSectionHeader("Custom tier (forced)")
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ForcedTier.entries.forEach { tier ->
-                    FilterChip(
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 8.dp, bottom = 24.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                val tiers = ForcedTier.entries
+                tiers.forEachIndexed { index, tier ->
+                    SelectableOptionCard(
+                        index = index,
+                        size = tiers.size,
                         selected = selectedTier == tier,
-                        onClick = { selectedTier = tier },
-                        label = { Text(tier.displayName()) }
-                    )
+                        onClick = {
+                            haptics.performHapticFeedback(HapticFeedbackType.ToggleOn)
+                            selectedTier = tier
+                        }
+                    ) { contentColor ->
+                        Text(
+                            text = tier.displayName(),
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = contentColor
+                        )
+                    }
                 }
             }
         }
 
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             SettingsSectionHeader("Tokens")
-            val tokens = SmartHapticToken.entries
-            tokens.forEachIndexed { index, token ->
-                SettingsGroupCard(index = index, size = tokens.size) {
-                    HapticTokenRowContent(
-                        token = token,
-                        systemHighlighted = buttonHighlights["${token.name}_system"] == true,
-                        customHighlighted = buttonHighlights["${token.name}_custom"] == true,
-                        onSystemClick = { handlePlay(token, HapticSide.SYSTEM) },
-                        onCustomClick = { handlePlay(token, HapticSide.CUSTOM) }
-                    )
+            Column {
+                val tokens = SmartHapticToken.entries
+                tokens.forEachIndexed { index, token ->
+                    SettingsGroupCard(index = index, size = tokens.size) {
+                        HapticTokenRowContent(
+                            token = token,
+                            systemHighlighted = buttonHighlights["${token.name}_system"] == true,
+                            customHighlighted = buttonHighlights["${token.name}_custom"] == true,
+                            onSystemClick = { handlePlay(token, HapticSide.SYSTEM) },
+                            onCustomClick = { handlePlay(token, HapticSide.CUSTOM) }
+                        )
+                    }
                 }
             }
         }
@@ -188,7 +223,8 @@ fun HapticsTestScreen(
                                     delay(50.milliseconds)
                                 }
                             }
-                        }
+                        },
+                        shapes = ButtonDefaults.shapes()
                     ) {
                         Text("Fire")
                     }
@@ -279,31 +315,13 @@ private fun HapticTokenRowContent(
     onSystemClick: () -> Unit,
     onCustomClick: () -> Unit
 ) {
-    val systemContainerColor by animateColorAsState(
-        targetValue = if (systemHighlighted) {
-            MaterialTheme.colorScheme.primaryContainer
-        } else {
-            MaterialTheme.colorScheme.surfaceContainer
-        },
-        label = "systemColor"
-    )
-    val customContainerColor by animateColorAsState(
-        targetValue = if (customHighlighted) {
-            MaterialTheme.colorScheme.primaryContainer
-        } else {
-            MaterialTheme.colorScheme.surfaceContainer
-        },
-        label = "customColor"
-    )
-
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 14.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Column(modifier = Modifier.weight(1f)) {
+        Column {
             Text(
                 text = token.displayName(),
                 style = MaterialTheme.typography.titleMedium
@@ -314,22 +332,64 @@ private fun HapticTokenRowContent(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-        FilledTonalButton(
-            onClick = onSystemClick,
-            colors = ButtonDefaults.filledTonalButtonColors(
-                containerColor = systemContainerColor
-            )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            Text("System")
-        }
-        FilledTonalButton(
-            onClick = onCustomClick,
-            colors = ButtonDefaults.filledTonalButtonColors(
-                containerColor = customContainerColor
+            HapticPlayButton(
+                label = "System",
+                highlighted = systemHighlighted,
+                onClick = onSystemClick,
+                modifier = Modifier.weight(1f)
             )
-        ) {
-            Text("Custom")
+            HapticPlayButton(
+                label = "Custom",
+                highlighted = customHighlighted,
+                onClick = onCustomClick,
+                modifier = Modifier.weight(1f)
+            )
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
+@Composable
+private fun HapticPlayButton(
+    label: String,
+    highlighted: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val containerColor by animateColorAsState(
+        targetValue = if (highlighted) {
+            MaterialTheme.colorScheme.primary
+        } else {
+            MaterialTheme.colorScheme.primaryContainer
+        },
+        animationSpec = MaterialTheme.motionScheme.slowEffectsSpec(),
+        label = "playButtonColor"
+    )
+
+    val contentColor by animateColorAsState(
+        targetValue = if (highlighted) {
+            MaterialTheme.colorScheme.onPrimary
+        } else {
+            MaterialTheme.colorScheme.onPrimaryContainer
+        },
+        animationSpec = MaterialTheme.motionScheme.slowEffectsSpec(),
+        label = "playButtonColor"
+    )
+
+    FilledTonalButton(
+        onClick = onClick,
+        modifier = modifier,
+        shapes = ButtonDefaults.shapes(),
+        colors = ButtonDefaults.filledTonalButtonColors(
+            containerColor = containerColor,
+            contentColor = contentColor
+        )
+    ) {
+        Text(label)
     }
 }
 
@@ -372,23 +432,23 @@ private fun SmartHapticToken.displayName(): String = when (this) {
 }
 
 private fun SmartHapticToken.description(): String = when (this) {
-    SmartHapticToken.ClockTick -> "Hour/minute tick of a clock"
-    SmartHapticToken.Confirm -> "Successful completion"
-    SmartHapticToken.ContextClick -> "Strong press on an object"
-    SmartHapticToken.DragStart -> "Drag-and-drop gesture start"
-    SmartHapticToken.GestureEnd -> "Finished gesture (e.g. keyboard)"
-    SmartHapticToken.GestureStart -> "Started gesture (e.g. keyboard)"
-    SmartHapticToken.GestureThresholdActive -> "Crossed pull-to-refresh threshold"
-    SmartHapticToken.GestureThresholdDeactive -> "Returned below threshold"
-    SmartHapticToken.LongPress -> "Press resulting in action"
-    SmartHapticToken.Reject -> "Failure or cancellation"
-    SmartHapticToken.SegmentFrequentTick -> "Rapid discrete choices"
-    SmartHapticToken.SegmentTick -> "Discrete choice (slider/list)"
-    SmartHapticToken.TextHandleMove -> "Selection handle move"
-    SmartHapticToken.ToggleOff -> "Switch turned off"
-    SmartHapticToken.ToggleOn -> "Switch turned on"
-    SmartHapticToken.VirtualKey -> "On-screen key press"
-    SmartHapticToken.VirtualKeyRelease -> "On-screen key release"
+    SmartHapticToken.ClockTick -> "The user has pressed either an hour or minute tick of a Clock."
+    SmartHapticToken.Confirm -> "A haptic effect to signal the confirmation or successful completion of a user interaction."
+    SmartHapticToken.ContextClick -> "The user has performed a context click on an object."
+    SmartHapticToken.DragStart -> "The user has started a drag-and-drop gesture."
+    SmartHapticToken.GestureEnd -> "The user has finished a gesture (e.g. on the soft keyboard)."
+    SmartHapticToken.GestureStart -> "The user has started a gesture (e.g. on the soft keyboard)."
+    SmartHapticToken.GestureThresholdActive -> "The user is executing a swipe/drag-style gesture, such as pull-to-refresh, where the gesture action is \"eligible\" at a certain threshold of movement, and can be cancelled by moving back past the threshold."
+    SmartHapticToken.GestureThresholdDeactive -> "The user is executing a swipe/drag-style gesture, such as pull-to-refresh, where the gesture action is \"eligible\" at a certain threshold of movement, and can be cancelled by moving back past the threshold."
+    SmartHapticToken.LongPress -> "The user has performed a long press on an object that is resulting in an action being performed."
+    SmartHapticToken.Reject -> "A haptic effect to signal the rejection or failure of a user interaction."
+    SmartHapticToken.SegmentFrequentTick -> "The user is switching between a series of many potential choices, for example minutes on a clock face, or individual percentages."
+    SmartHapticToken.SegmentTick -> "The user is switching between a series of potential choices, for example items in a list or discrete points on a slider."
+    SmartHapticToken.TextHandleMove -> "The user has performed a selection/insertion handle move on text field."
+    SmartHapticToken.ToggleOff -> "The user has toggled a switch or button into the off position."
+    SmartHapticToken.ToggleOn -> "The user has toggled a switch or button into the on position."
+    SmartHapticToken.VirtualKey -> "The user has pressed on a virtual on-screen key."
+    SmartHapticToken.VirtualKeyRelease -> "The user has released a virtual key"
 }
 
 @Preview(showBackground = true)
