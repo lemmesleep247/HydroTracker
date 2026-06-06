@@ -257,19 +257,19 @@ object SmartHaptics {
         val comp = VibrationEffect.startComposition()
         when (this) {
             // The user has pressed either an hour or minute tick of a Clock.
-            SmartHapticToken.ClockTick -> comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.5f)
+            SmartHapticToken.ClockTick -> comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.8f)
 
             // A haptic effect to signal the confirmation or successful completion of a user interaction.
             SmartHapticToken.Confirm -> {
-                comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.5f)
-                comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f, 50)
+                comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.9f)
             }
 
             // The user has performed a context click on an object.
-            SmartHapticToken.ContextClick -> comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.8f)
+            SmartHapticToken.ContextClick -> comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.5f)
 
             // The user has started a drag-and-drop gesture.
-            SmartHapticToken.DragStart -> comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_THUD, 0.9f)
+            SmartHapticToken.DragStart -> {comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 1f)
+                comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_QUICK_RISE, 0.5f)}
 
             // The user has finished a gesture (e.g. on the soft keyboard).
             SmartHapticToken.GestureEnd -> comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_LOW_TICK, 0.4f)
