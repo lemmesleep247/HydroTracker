@@ -89,7 +89,8 @@ fun DeveloperOptionsScreen(
     waterIntakeRepository: WaterIntakeRepository? = null,
     onNavigateBack: () -> Unit = {},
     onNavigateToOnboarding: () -> Unit = {},
-    onNavigateToHapticsTest: () -> Unit = {}
+    onNavigateToHapticsTest: () -> Unit = {},
+    onNavigateToHapticsLab: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -203,7 +204,7 @@ fun DeveloperOptionsScreen(
                 DevSection("Haptics") {
                     DeveloperActionCard(
                         index = 0,
-                        size = 1,
+                        size = 2,
                         title = "Test Haptics Engine",
                         description = "Compare system and custom haptic feedback",
                         icon = ImageVector.vectorResource(R.drawable.mobile_vibrate_filled),
@@ -211,6 +212,18 @@ fun DeveloperOptionsScreen(
                         onClick = {
                             haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
                             onNavigateToHapticsTest()
+                        }
+                    )
+                    DeveloperActionCard(
+                        index = 1,
+                        size = 2,
+                        title = "Haptics Primitive Lab",
+                        description = "Build & test primitive compositions live",
+                        icon = ImageVector.vectorResource(R.drawable.data_object_filled),
+                        showChevron = true,
+                        onClick = {
+                            haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+                            onNavigateToHapticsLab()
                         }
                     )
                 }

@@ -58,6 +58,7 @@ import com.cemcakmak.hydrotracker.presentation.settings.BeverageTypesEditScreen
 import com.cemcakmak.hydrotracker.presentation.settings.NotificationsScreen
 import com.cemcakmak.hydrotracker.presentation.settings.ReminderIntervalScreen
 import com.cemcakmak.hydrotracker.presentation.settings.DeveloperOptionsScreen
+import com.cemcakmak.hydrotracker.presentation.settings.HapticsLabScreen
 import com.cemcakmak.hydrotracker.presentation.settings.HapticsTestScreen
 import com.cemcakmak.hydrotracker.presentation.settings.PlaceholderScreen
 import com.cemcakmak.hydrotracker.presentation.settings.HealthConnectDataScreen
@@ -585,11 +586,21 @@ fun HydroTrackerApp(
                                 onNavigateToHapticsTest = {
                                     developerOptionsWasPop = true
                                     backStack.add(NavigationRoutes.SettingsDeveloperHaptics)
+                                },
+                                onNavigateToHapticsLab = {
+                                    developerOptionsWasPop = true
+                                    backStack.add(NavigationRoutes.SettingsDeveloperHapticsLab)
                                 }
                             )
                         }
                         entry<NavigationRoutes.SettingsDeveloperHaptics> {
                             HapticsTestScreen(
+                                themePreferences = themePreferences,
+                                onNavigateBack = popBackStack
+                            )
+                        }
+                        entry<NavigationRoutes.SettingsDeveloperHapticsLab> {
+                            HapticsLabScreen(
                                 themePreferences = themePreferences,
                                 onNavigateBack = popBackStack
                             )

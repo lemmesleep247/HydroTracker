@@ -45,35 +45,69 @@ object SmartHaptics {
      * @param token The semantic haptic token to play.
      */
     fun perform(context: Context, token: SmartHapticToken) {
-        when {
-            // Tier 1: HapticFeedbackConstants on good OEMs (API 27+ for most rich constants)
-            !isBrokenOem && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1 -> {
+        when (resolveTier(context, token)) {
+            // Tier 1: HapticFeedbackConstants on good OEMs.
+            ForcedTier.CONSTANTS -> {
                 val view = getDecorView(context)
-                if (view != null) {
-                    val constant = token.toHapticFeedbackConstant()
-                    if (constant != null) {
-                        view.performHapticFeedback(constant)
-                        return
-                    }
-                }
-                // Fall through if no view or no mapping
-                fallbackVibrate(context, token)
-            }
-
-            // Tier 2: Composition primitives on API 31+ (broken OEMs or missing Tier 1 mapping)
-            Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-                val effect = token.toPrimitiveComposition()
-                if (primitivesSupported(context, token)) {
-                    vibrate(context, effect)
+                val constant = token.toHapticFeedbackConstant()
+                if (view != null && constant != null) {
+                    view.performHapticFeedback(constant)
                 } else {
                     fallbackVibrate(context, token)
                 }
             }
 
-            // Tier 3 & 4: Predefined or legacy
-            else -> fallbackVibrate(context, token)
+            // Tier 2: Composition primitives on API 31+.
+            ForcedTier.PRIMITIVES -> {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    vibrate(context, token.toPrimitiveComposition())
+                } else {
+                    fallbackVibrate(context, token)
+                }
+            }
+
+            // Tier 3 (predefined) & Tier 4 (legacy) are both handled by fallbackVibrate.
+            ForcedTier.PREDEFINED, ForcedTier.LEGACY, ForcedTier.AUTO -> fallbackVibrate(context, token)
         }
     }
+
+    /**
+     * Resolve which tier [perform] will route [token] to on this device/context, *without* playing
+     * anything. Single source of truth shared by [perform] and the debug UI, so the displayed tier
+     * always matches what actually fires. Never returns [ForcedTier.AUTO].
+     *
+     * The result can vary per token: a token whose required primitives aren't supported drops a tier,
+     * and a constant with no mapping at this API level skips Tier 1.
+     */
+    fun resolveTier(context: Context, token: SmartHapticToken): ForcedTier {
+        // Tier 1: HapticFeedbackConstants on good OEMs with a usable decor view + a mapping.
+        if (!isBrokenOem && Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
+            return if (getDecorView(context) != null && token.toHapticFeedbackConstant() != null) {
+                ForcedTier.CONSTANTS
+            } else {
+                resolveFallbackTier(token)
+            }
+        }
+        // Tier 2: composition primitives (broken OEMs, or Tier 1 unavailable).
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S && primitivesSupported(context, token)) {
+            return ForcedTier.PRIMITIVES
+        }
+        // Tier 3 / Tier 4
+        return resolveFallbackTier(token)
+    }
+
+    /**
+     * Human-readable tier label for the debug UI (e.g. "Tier 3 · Predefined"). Uses a representative
+     * token by default; pass a specific [token] to see its exact routing.
+     */
+    fun resolveTierLabel(context: Context, token: SmartHapticToken = SmartHapticToken.Confirm): String =
+        when (resolveTier(context, token)) {
+            ForcedTier.CONSTANTS -> "Tier 1 · Constants"
+            ForcedTier.PRIMITIVES -> "Tier 2 · Primitives"
+            ForcedTier.PREDEFINED -> "Tier 3 · Predefined"
+            ForcedTier.LEGACY -> "Tier 4 · Legacy"
+            ForcedTier.AUTO -> "Auto"
+        }
 
     /**
      * Play a raw [HapticFeedbackConstants] value through the SmartHaptics pipeline.
@@ -137,6 +171,26 @@ object SmartHaptics {
         }
     }
 
+    /**
+     * Play an arbitrary primitive composition. Used by the Haptics Primitive Lab to preview custom
+     * combinations live without rebuilding the app. The caller is responsible for checking primitive
+     * support (e.g. via [Vibrator.arePrimitivesSupported]); unsupported primitives are dropped by the
+     * platform. Scales are clamped to [0, 1] and delays to >= 0.
+     */
+    @RequiresApi(Build.VERSION_CODES.S)
+    fun playPrimitiveSteps(context: Context, steps: List<PrimitiveStep>) {
+        if (steps.isEmpty()) return
+        val comp = VibrationEffect.startComposition()
+        steps.forEach { step ->
+            comp.addPrimitive(
+                step.primitiveId,
+                step.scale.coerceIn(0f, 1f),
+                step.delayMs.coerceAtLeast(0)
+            )
+        }
+        vibrate(context, comp.compose())
+    }
+
     // ---------------------------------------------------------------------------------------------
     // Internal helpers
     // ---------------------------------------------------------------------------------------------
@@ -152,6 +206,15 @@ object SmartHaptics {
             }
         }
         legacyVibrate(context, token)
+    }
+
+    // Mirror of [fallbackVibrate]'s decision: Tier 3 (predefined) on API 29+, else Tier 4 (legacy).
+    private fun resolveFallbackTier(token: SmartHapticToken): ForcedTier {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q && token.toPredefinedEffect() != null) {
+            ForcedTier.PREDEFINED
+        } else {
+            ForcedTier.LEGACY
+        }
     }
 
     private fun vibrate(context: Context, effect: VibrationEffect) {
@@ -267,85 +330,151 @@ object SmartHaptics {
             // The user has performed a context click on an object.
             SmartHapticToken.ContextClick -> comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.5f)
 
-            // The user has started a drag-and-drop gesture.
-            SmartHapticToken.DragStart -> {comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 1f)
-                comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_QUICK_RISE, 0.5f)}
+            // The user has started a drag-and-drop gesture. Lift (rise) into a firm grab.
+            SmartHapticToken.DragStart -> {
+                comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_QUICK_RISE, 0.4f)
+                comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.8f)
+            }
 
-            // The user has finished a gesture (e.g. on the soft keyboard).
-            SmartHapticToken.GestureEnd -> comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_LOW_TICK, 0.4f)
+            // The user has finished a gesture (e.g. on the soft keyboard). A tick that falls off.
+            SmartHapticToken.GestureEnd -> {
+                comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.5f)
+                comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_QUICK_FALL, 0.4f)
+            }
 
-            // The user has started a gesture (e.g. on the soft keyboard).
-            SmartHapticToken.GestureStart -> comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.5f)
+            // The user has started a gesture (e.g. on the soft keyboard). A light rising onset.
+            SmartHapticToken.GestureStart -> {
+                comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_QUICK_RISE, 0.3f)
+                comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.6f)
+            }
 
             // The user is executing a swipe/drag-style gesture, such as pull-to-refresh,
             // where the gesture action is "eligible" at a certain threshold of movement,
-            // and can be canceled by moving back past the threshold.
-            SmartHapticToken.GestureThresholdActive -> comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.8f)
+            // and can be canceled by moving back past the threshold. Snap into "eligible".
+            SmartHapticToken.GestureThresholdActive -> {
+                comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.5f)
+                comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.8f)
+            }
 
             // The user is executing a swipe/drag-style gesture, such as pull-to-refresh,
             // where the gesture action is "eligible" at a certain threshold of movement,
-            // and can be canceled by moving back past the threshold.
-            SmartHapticToken.GestureThresholdDeactive -> comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.4f)
+            // and can be canceled by moving back past the threshold. Un-snap (mirrors Active).
+            SmartHapticToken.GestureThresholdDeactive -> {
+                comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.4f)
+                comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_QUICK_FALL, 0.3f)
+            }
 
             // The user has performed a long press on an object that is resulting in an action being performed.
-            SmartHapticToken.LongPress -> comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_THUD, 1.0f)
+            // Pressure builds (slow rise) then the action fires (firm click).
+            SmartHapticToken.LongPress -> {
+                comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_SLOW_RISE, 0.5f)
+                comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f)
+            }
 
             // A haptic effect to signal the rejection or failure of a user interaction.
+            // Descending triple "no"; gaps widened to >=50ms so the pulses stay distinct.
             SmartHapticToken.Reject -> {
                 comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 1.0f)
-                comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.8f, 30)
-                comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.8f, 30)
-                comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.5f, 30)
+                comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.8f, 60)
+                comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.5f, 60)
             }
 
             // The user is switching between a series of many potential choices, for example minutes on a clock face, or individual percentages.
+            // Rapid-fire: kept a single very soft tick so repeats stay light.
             SmartHapticToken.SegmentFrequentTick -> comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_LOW_TICK, 0.3f)
 
             // The user is switching between a series of potential choices, for example items in a list or discrete points on a slider.
-            SmartHapticToken.SegmentTick -> comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.4f)
+            // Rapid-fire: single crisp tick.
+            SmartHapticToken.SegmentTick -> comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.6f)
 
             // The user has performed a selection/insertion handle move on text field.
-            SmartHapticToken.TextHandleMove -> comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.2f)
+            // Rapid-fire: single soft low tick (texture-like).
+            SmartHapticToken.TextHandleMove -> comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_LOW_TICK, 0.3f)
 
-            // The user has toggled a switch or button into the off position.
-            SmartHapticToken.ToggleOff -> comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_LOW_TICK, 0.6f)
+            // The user has toggled a switch or button into the off position. Firm release that falls away.
+            SmartHapticToken.ToggleOff -> {
+                comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.5f)
+                comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_QUICK_FALL, 0.5f)
+            }
 
-            // The user has toggled a switch or button into the on position.
-            SmartHapticToken.ToggleOn -> comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.7f)
+            // The user has toggled a switch or button into the on position. Rising "snap on".
+            SmartHapticToken.ToggleOn -> {
+                comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_QUICK_RISE, 0.15f)
+                comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.5f, 50)
+            }
 
-            // The user has pressed on a virtual on-screen key.
-            SmartHapticToken.VirtualKey -> comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.6f)
+            // The user has pressed on a virtual on-screen key. Rapid-fire: single crisp click.
+            SmartHapticToken.VirtualKey -> comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.8f)
 
-            // The user has released a virtual key.
-            SmartHapticToken.VirtualKeyRelease -> comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.3f)
+            // The user has released a virtual key. Rapid-fire: single light tick.
+            SmartHapticToken.VirtualKeyRelease -> comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.4f)
         }
         return comp.compose()
     }
 
     @RequiresApi(Build.VERSION_CODES.S)
     private fun SmartHapticToken.requiredPrimitives(): List<Int> = when (this) {
-        SmartHapticToken.ClockTick,
+        // Single CLICK
         SmartHapticToken.Confirm,
         SmartHapticToken.ContextClick,
-        SmartHapticToken.GestureStart,
-        SmartHapticToken.GestureThresholdActive,
-        SmartHapticToken.GestureThresholdDeactive,
         SmartHapticToken.Reject,
-        SmartHapticToken.SegmentTick,
-        SmartHapticToken.TextHandleMove,
-        SmartHapticToken.ToggleOn,
-        SmartHapticToken.VirtualKey,
-        SmartHapticToken.VirtualKeyRelease ->
-            listOf(VibrationEffect.Composition.PRIMITIVE_CLICK, VibrationEffect.Composition.PRIMITIVE_TICK)
+        SmartHapticToken.VirtualKey ->
+            listOf(VibrationEffect.Composition.PRIMITIVE_CLICK)
 
+        // Single TICK
+        SmartHapticToken.ClockTick,
+        SmartHapticToken.SegmentTick,
+        SmartHapticToken.VirtualKeyRelease ->
+            listOf(VibrationEffect.Composition.PRIMITIVE_TICK)
+
+        // Single LOW_TICK
         SmartHapticToken.SegmentFrequentTick,
-        SmartHapticToken.GestureEnd,
-        SmartHapticToken.ToggleOff ->
+        SmartHapticToken.TextHandleMove ->
             listOf(VibrationEffect.Composition.PRIMITIVE_LOW_TICK)
 
-        SmartHapticToken.DragStart,
+        // QUICK_RISE -> CLICK
+        SmartHapticToken.ToggleOn,
+        SmartHapticToken.DragStart ->
+            listOf(
+                VibrationEffect.Composition.PRIMITIVE_QUICK_RISE,
+                VibrationEffect.Composition.PRIMITIVE_CLICK
+            )
+
+        // CLICK -> QUICK_FALL
+        SmartHapticToken.ToggleOff ->
+            listOf(
+                VibrationEffect.Composition.PRIMITIVE_CLICK,
+                VibrationEffect.Composition.PRIMITIVE_QUICK_FALL
+            )
+
+        // QUICK_RISE -> TICK
+        SmartHapticToken.GestureStart ->
+            listOf(
+                VibrationEffect.Composition.PRIMITIVE_QUICK_RISE,
+                VibrationEffect.Composition.PRIMITIVE_TICK
+            )
+
+        // TICK -> QUICK_FALL
+        SmartHapticToken.GestureEnd,
+        SmartHapticToken.GestureThresholdDeactive ->
+            listOf(
+                VibrationEffect.Composition.PRIMITIVE_TICK,
+                VibrationEffect.Composition.PRIMITIVE_QUICK_FALL
+            )
+
+        // TICK -> CLICK
+        SmartHapticToken.GestureThresholdActive ->
+            listOf(
+                VibrationEffect.Composition.PRIMITIVE_TICK,
+                VibrationEffect.Composition.PRIMITIVE_CLICK
+            )
+
+        // SLOW_RISE -> CLICK
         SmartHapticToken.LongPress ->
-            listOf(VibrationEffect.Composition.PRIMITIVE_THUD)
+            listOf(
+                VibrationEffect.Composition.PRIMITIVE_SLOW_RISE,
+                VibrationEffect.Composition.PRIMITIVE_CLICK
+            )
     }
 
     @SuppressLint("NewApi")
@@ -400,6 +529,19 @@ enum class ForcedTier {
     PREDEFINED,
     LEGACY
 }
+
+/**
+ * One primitive in a custom composition built in the Haptics Primitive Lab.
+ *
+ * @param primitiveId a [VibrationEffect.Composition] PRIMITIVE_* id.
+ * @param scale intensity 0.0–1.0 (0.0 = minimum perceivable, not off).
+ * @param delayMs pause in milliseconds before this primitive (since the previous one ended).
+ */
+data class PrimitiveStep(
+    val primitiveId: Int,
+    val scale: Float,
+    val delayMs: Int = 0
+)
 
 /**
  * Semantic haptic tokens. These are hardware-agnostic names for haptic events.

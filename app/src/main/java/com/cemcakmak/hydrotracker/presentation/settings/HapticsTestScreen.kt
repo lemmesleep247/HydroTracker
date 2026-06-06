@@ -95,7 +95,6 @@ fun HapticsTestScreen(
     }
 
     fun handlePlay(token: SmartHapticToken, side: HapticSide) {
-        haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
         when (playMode) {
             PlayMode.INDIVIDUAL -> when (side) {
                 HapticSide.SYSTEM -> playSystem(token)
@@ -260,6 +259,10 @@ private fun DeviceInfoSection(
         }
     }
 
+    // Which tier SmartHaptics will actually route to on this device — straight from the engine,
+    // so the readout always matches real behavior. Uses a representative token (Confirm).
+    val resolvedTier = remember { SmartHaptics.resolveTierLabel(context) }
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -284,6 +287,8 @@ private fun DeviceInfoSection(
             InfoRow("Broken OEM", if (SmartHaptics.isBrokenOem) "Yes" else "No")
             HorizontalDivider()
             InfoRow("Primitives", if (primitivesSupported) "Supported" else "Not supported")
+            HorizontalDivider()
+            InfoRow("Haptics Tier", resolvedTier)
         }
     }
 }

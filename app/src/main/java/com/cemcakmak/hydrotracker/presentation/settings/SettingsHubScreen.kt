@@ -261,7 +261,7 @@ private fun SettingsCategoryCard(
         modifier = Modifier
             .padding(bottom = 2.dp),
         onClick = {
-            haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+            haptics.performHapticFeedback(HapticFeedbackType.Confirm)
             onNavigateTo(category.route)
         }
     ) {
