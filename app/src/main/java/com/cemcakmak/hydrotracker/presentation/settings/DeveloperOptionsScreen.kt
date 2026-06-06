@@ -173,7 +173,7 @@ fun DeveloperOptionsScreen(
                 DeviceInfoSection(themePreferences = themePreferences)
 
                 // Data
-                DevSection("Data", modifier = Modifier.padding(top = 24.dp)) {
+                DevSection("Data") {
                     DeveloperActionCard(
                         index = 0,
                         size = 3,
