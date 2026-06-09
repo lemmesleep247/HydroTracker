@@ -60,7 +60,6 @@ fun HomeScreen(
     waterIntakeRepository: WaterIntakeRepository,
     containerPresetRepository: ContainerPresetRepository,
     activeBeverages: List<BeverageOption> = BeverageType.getAllSorted().map { it.toOption() },
-    onNavigateToSettings: () -> Unit = {},
     paddingValues: PaddingValues,
     snackbarHostState: SnackbarHostState,
     showCustomDialog: Boolean = false,
@@ -230,18 +229,6 @@ fun HomeScreen(
                     )
                     isRefreshing = false
                 }
-            } else {
-                // Show loading animation even when disabled for consistency
-                kotlinx.coroutines.delay(1500.milliseconds)
-                snackbarHostState.showSnackbar(
-                    message = "Health Connect sync is disabled",
-                    actionLabel = "Enable"
-                ).let { result ->
-                    if (result == SnackbarResult.ActionPerformed) {
-                        onNavigateToSettings()
-                    }
-                }
-                isRefreshing = false
             }
         }
     }

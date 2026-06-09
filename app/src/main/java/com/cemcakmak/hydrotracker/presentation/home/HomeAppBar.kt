@@ -13,12 +13,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.ErrorOutline
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -47,8 +45,7 @@ import com.cemcakmak.hydrotracker.health.HealthConnectSyncManager
 internal fun HomeTopAppBar(
     scrollBehavior: TopAppBarScrollBehavior,
     userProfile: UserProfile?,
-    waterIntakeRepository: WaterIntakeRepository?,
-    onNavigateToSettings: () -> Unit = {}
+    waterIntakeRepository: WaterIntakeRepository?
 ) {
     val elevated by remember {
         derivedStateOf { scrollBehavior.state.collapsedFraction > 0f }
@@ -86,16 +83,7 @@ internal fun HomeTopAppBar(
             },
             colors = TopAppBarDefaults.topAppBarColors(
                 containerColor = MaterialTheme.colorScheme.surface
-            ),
-            actions = {
-                IconButton(onClick = onNavigateToSettings) {
-                    Icon(
-                        imageVector = Icons.Default.Settings,
-                        contentDescription = "Settings",
-                        tint = MaterialTheme.colorScheme.onSurface,
-                    )
-                }
-            }
+            )
         )
     }
 }

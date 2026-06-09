@@ -8,7 +8,6 @@ sealed interface NavigationRoutes : NavKey {
     @Serializable data object Home : NavigationRoutes
     @Serializable data object History : NavigationRoutes
     @Serializable data object Settings : NavigationRoutes
-    @Serializable data object SettingsOld : NavigationRoutes
     @Serializable data object Profile : NavigationRoutes
     @Serializable data object HealthConnectData : NavigationRoutes
 

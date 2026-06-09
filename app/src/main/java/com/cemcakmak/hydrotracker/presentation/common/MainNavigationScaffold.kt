@@ -31,7 +31,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ShortNavigationBar
 import androidx.compose.material3.ShortNavigationBarItem
-import androidx.compose.material3.ShortNavigationBarItemDefaults
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -85,7 +84,6 @@ fun MainNavigationScaffold(
     waterIntakeRepository: WaterIntakeRepository? = null,
     snackbarHostState: SnackbarHostState,
     fabExpanded: Boolean = true,
-    onNavigateToSettings: () -> Unit = {},
     onAddCustomClick: () -> Unit = {},
     onTabSwitch: () -> Unit = {},
     autoHideNavBar: Boolean = false,
@@ -140,8 +138,7 @@ fun MainNavigationScaffold(
                     NavigationRoutes.Home -> HomeTopAppBar(
                         scrollBehavior = homeScrollBehavior,
                         userProfile = userProfile,
-                        waterIntakeRepository = waterIntakeRepository,
-                        onNavigateToSettings = onNavigateToSettings
+                        waterIntakeRepository = waterIntakeRepository
                     )
                     NavigationRoutes.History -> HistoryTopAppBar()
                     NavigationRoutes.Profile -> ProfileTopAppBar()

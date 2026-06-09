@@ -49,7 +49,6 @@ import com.cemcakmak.hydrotracker.presentation.common.*
 import com.cemcakmak.hydrotracker.presentation.home.HomeScreen
 import com.cemcakmak.hydrotracker.presentation.history.HistoryScreen
 import com.cemcakmak.hydrotracker.presentation.profile.ProfileScreen
-import com.cemcakmak.hydrotracker.presentation.settings.SettingsScreen
 import com.cemcakmak.hydrotracker.presentation.settings.SettingsHubScreen
 import com.cemcakmak.hydrotracker.presentation.settings.AboutScreen
 import com.cemcakmak.hydrotracker.presentation.settings.UpdatesScreen
@@ -327,7 +326,6 @@ fun HydroTrackerApp(
                 waterIntakeRepository = waterIntakeRepository,
                 snackbarHostState = snackbarHostState,
                 fabExpanded = homeFabExpanded,
-                onNavigateToSettings = { backStack.add(NavigationRoutes.SettingsOld) },
                 onAddCustomClick = { homeShowCustomDialog = true },
                 onTabSwitch = { wasPop = false },
                 autoHideNavBar = themePreferences.autoHideNavBar,
@@ -424,7 +422,6 @@ fun HydroTrackerApp(
                                     waterIntakeRepository = waterIntakeRepository,
                                     containerPresetRepository = containerPresetRepository,
                                     activeBeverages = activeBeverages,
-                                    onNavigateToSettings = { backStack.add(NavigationRoutes.SettingsOld) },
                                     paddingValues = paddingValues,
                                     snackbarHostState = snackbarHostState,
                                     showCustomDialog = homeShowCustomDialog,
@@ -452,53 +449,6 @@ fun HydroTrackerApp(
                                     snackbarHostState = snackbarHostState
                                 )
                             } ?: LoadingScreen()
-                        }
-
-                        entry<NavigationRoutes.SettingsOld> {
-                            SettingsScreen(
-                                themePreferences = themePreferences,
-                                userProfile = userProfile,
-                                userRepository = userRepository,
-                                waterIntakeRepository = waterIntakeRepository,
-                                containerPresetRepository = containerPresetRepository,
-                                onColorSourceChange = themeViewModel::setColorSource,
-                                onDarkModeChange = themeViewModel::updateDarkModePreference,
-                                onPureBlackChange = themeViewModel::updatePureBlackPreference,
-                                onWeekStartDayChange = themeViewModel::updateWeekStartDay,
-                                onHydrationStandardChange = { newStandard ->
-                                    userProfile?.let { profile ->
-                                        val newGoal = com.cemcakmak.hydrotracker.utils.WaterCalculator.calculateDailyWaterGoal(
-                                            gender = profile.gender,
-                                            activityLevel = profile.activityLevel,
-                                            weight = profile.weight,
-                                            hydrationStandard = newStandard
-                                        )
-
-                                        val updatedProfile = profile.copy(
-                                            hydrationStandard = newStandard,
-                                            dailyWaterGoal = newGoal
-                                        )
-                                        userRepository.saveUserProfile(updatedProfile)
-                                    }
-                                },
-                                isDynamicColorAvailable = themeViewModel.isDynamicColorAvailable(),
-                                onRequestNotificationPermission = {
-                                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                                        notificationPermissionLauncher.launch(android.Manifest.permission.POST_NOTIFICATIONS)
-                                    }
-                                },
-                                healthConnectPermissionLauncher = healthConnectPermissionLauncher,
-                                onNavigateBack = popBackStack,
-                                onNavigateToOnboarding = {
-                                    backStack.apply {
-                                        clear()
-                                        add(NavigationRoutes.Onboarding)
-                                    }
-                                },
-                                onNavigateToHealthConnectData = {
-                                    backStack.add(NavigationRoutes.HealthConnectData)
-                                }
-                            )
                         }
 
                         entry<NavigationRoutes.Settings> {
