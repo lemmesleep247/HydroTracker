@@ -62,7 +62,8 @@ private fun LanguageSection() {
     val haptics = LocalHapticFeedback.current
     val activity = LocalActivity.current
     val context = LocalContext.current
-    val currentTag = AppLocale.currentTag(context)
+    // Cache the persisted tag so SharedPreferences is not read on every recomposition.
+    val currentTag = remember(context) { AppLocale.currentTag(context) }
 
     // null represents "System default"; the rest are the shipped translation tags.
     val options: List<String?> = remember { listOf(null) + AppLocale.SUPPORTED_TAGS }
