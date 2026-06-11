@@ -76,7 +76,7 @@ object AppLocale {
         return base.createConfigurationContext(config)
     }
 
-    /** Autonym-style display name for a tag (e.g. "Deutsch" for "de"), capitalised. */
+    /** Autonym-style display name for a tag (e.g. "Deutsch" for "de"), capitalized. */
     fun displayName(tag: String): String {
         val locale = Locale.forLanguageTag(tag)
         return locale.getDisplayName(locale).replaceFirstChar { it.uppercase(locale) }
