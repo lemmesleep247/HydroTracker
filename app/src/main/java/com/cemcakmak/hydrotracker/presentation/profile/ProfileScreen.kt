@@ -361,7 +361,7 @@ fun ProfilePictureBottomSheet(
     onImageSelected: (Uri?) -> Unit
 ) {
     val context = LocalContext.current
-    val bottomSheetState = rememberModalBottomSheetState()
+    val bottomSheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
 
     // Camera launcher
     val cameraLauncher = rememberLauncherForActivityResult(

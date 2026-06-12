@@ -20,7 +20,6 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LargeFlexibleTopAppBar
 import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemColors
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -274,16 +273,9 @@ private fun SettingsCategoryCard(
             headlineContent = { Text(category.title) },
             supportingContent = { Text(category.description) },
             leadingContent = category.icon,
-            colors = ListItemColors(
-                leadingIconColor = MaterialTheme.colorScheme.primary,
-                headlineColor = category.titleColor ?: ListItemDefaults.colors().headlineColor,
-                supportingTextColor = ListItemDefaults.colors().supportingTextColor,
-                containerColor = ListItemDefaults.colors().containerColor,
-                overlineColor = ListItemDefaults.colors().overlineColor,
-                trailingIconColor = ListItemDefaults.colors().trailingIconColor,
-                disabledHeadlineColor = ListItemDefaults.colors().disabledHeadlineColor,
-                disabledLeadingIconColor = ListItemDefaults.colors().disabledLeadingIconColor,
-                disabledTrailingIconColor = ListItemDefaults.colors().disabledTrailingIconColor
+            colors = ListItemDefaults.colors(
+                leadingContentColor = MaterialTheme.colorScheme.primary,
+                contentColor = category.titleColor ?: ListItemDefaults.colors().contentColor
             )
         )
     }

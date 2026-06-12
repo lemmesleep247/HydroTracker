@@ -44,7 +44,7 @@ fun ProfileSetupStep(
     description: String
 ) {
     val context = LocalContext.current
-    val bottomSheetState = rememberModalBottomSheetState()
+    val bottomSheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
     var showBottomSheet by remember { mutableStateOf(false) }
     
     // Camera launcher

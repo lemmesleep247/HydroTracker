@@ -133,7 +133,7 @@ fun AddCustomBeverageBottomSheet(
     onDismiss: () -> Unit,
     onAdd: (name: String, hydrationMultiplier: Double, iconKey: String) -> Unit
 ) {
-    val sheetState = rememberModalBottomSheetState()
+    val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         AddCustomBeverageSheetContent(onAdd = onAdd)
     }
@@ -326,7 +326,7 @@ fun EditCustomBeverageBottomSheet(
     onSave: (name: String, hydrationMultiplier: Double, iconKey: String) -> Unit,
     onDelete: () -> Unit
 ) {
-    val sheetState = rememberModalBottomSheetState()
+    val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         EditCustomBeverageSheetContent(
             initialName = initialName,
@@ -435,7 +435,7 @@ fun PresetBeverageBottomSheet(
     onToggleHidden: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    val sheetState = rememberModalBottomSheetState()
+    val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
         PresetBeverageSheetContent(
             type = type,

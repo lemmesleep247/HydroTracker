@@ -22,7 +22,7 @@ android {
     defaultConfig {
         applicationId = "com.cemcakmak.hydrotracker"
         minSdk = 26
-        targetSdk = 36
+        targetSdk = 37
         versionCode = 28
         versionName = "1.0.6.1"
 
@@ -167,7 +167,7 @@ androidComponents {
         // set is populated lazily in withDependencies {}. The task consumes pomFiles as @Internal and
         // resolves it inside its action, so the runtime classpath is resolved only at execution time —
         // never during the configuration phase (which would be a performance/config-cache penalty).
-        // The version catalog is the task's tracked input, so it re-runs when dependencies change.
+        // The version catalogue is the task's tracked input, so it re-runs when dependencies change.
         val pomConfig = configurations.detachedConfiguration().apply {
             isTransitive = false
             withDependencies {
@@ -178,6 +178,7 @@ androidComponents {
         }
 
         val licensesTask = tasks.register<GenerateLicensesTask>("generate${capName}LicensesJson") {
+            description = "Generates a JSON licence list for the ${variant.name} variant."
             outputDir.set(layout.buildDirectory.dir("generated/licenses/${variant.name}"))
             pomFiles.from(pomConfig)
             versionCatalog.set(catalogFile)
@@ -261,7 +262,7 @@ abstract class GenerateLicensesTask : DefaultTask() {
     private fun directChildText(parent: org.w3c.dom.Element, tag: String): String? =
         directChild(parent, tag)?.textContent?.trim()
 
-    // Collapse the many vendor spellings of common licenses into clean SPDX-ish tags for display.
+    // Collapse the many vendor spellings of common licences into clean SPDX-ish tags for display.
     private fun normalizeLicense(name: String): String {
         val n = name.lowercase()
         return when {
@@ -275,7 +276,7 @@ abstract class GenerateLicensesTask : DefaultTask() {
     }
 
     companion object {
-        // Fallback licenses for artifacts whose POMs declare the license only in a parent.
+        // Fallback licences for artefacts whose POMs declare the licence only in a parent.
         private val LICENSE_OVERRIDES = mapOf(
             "com.google.guava" to ("Apache-2.0" to "https://www.apache.org/licenses/LICENSE-2.0.txt")
         )

@@ -36,7 +36,7 @@ fun GoalEditBottomSheet(
     onDismiss: () -> Unit,
     onConfirm: (Double) -> Unit
 ) {
-    val bottomSheetState = rememberModalBottomSheetState()
+    val bottomSheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
     var sliderValue by remember(currentGoal) { mutableFloatStateOf(currentGoal.toFloat() / 1000f) }
     var goalText by remember(currentGoal) { mutableStateOf(String.format(Locale.getDefault(), "%.2f", currentGoal / 1000)) }
     var isError by remember { mutableStateOf(false) }
@@ -222,7 +222,7 @@ fun ActivityLevelBottomSheet(
     onDismiss: () -> Unit,
     onConfirm: (ActivityLevel) -> Unit
 ) {
-    val bottomSheetState = rememberModalBottomSheetState()
+    val bottomSheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
 
     if (showBottomSheet) {
         ModalBottomSheet(
@@ -304,7 +304,7 @@ fun ScheduleEditBottomSheet(
     onDismiss: () -> Unit,
     onConfirm: (String, String) -> Unit
 ) {
-    val bottomSheetState = rememberModalBottomSheetState()
+    val bottomSheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
     
     // Parse current times
     val wakeUpParts = currentWakeUpTime.split(":")
@@ -554,7 +554,7 @@ fun GenderEditBottomSheet(
     onDismiss: () -> Unit,
     onConfirm: (Gender) -> Unit
 ) {
-    val bottomSheetState = rememberModalBottomSheetState()
+    val bottomSheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
 
     if (showBottomSheet) {
         ModalBottomSheet(
@@ -626,7 +626,7 @@ fun AgeGroupEditBottomSheet(
     onDismiss: () -> Unit,
     onConfirm: (AgeGroup) -> Unit
 ) {
-    val bottomSheetState = rememberModalBottomSheetState()
+    val bottomSheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
 
     if (showBottomSheet) {
         ModalBottomSheet(
@@ -698,7 +698,7 @@ fun WeightEditBottomSheet(
     onDismiss: () -> Unit,
     onConfirm: (Double?) -> Unit
 ) {
-    val bottomSheetState = rememberModalBottomSheetState()
+    val bottomSheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
     var weightText by remember(currentWeight) { mutableStateOf(currentWeight?.toString() ?: "") }
     var isWeightError by remember { mutableStateOf(false) }
 

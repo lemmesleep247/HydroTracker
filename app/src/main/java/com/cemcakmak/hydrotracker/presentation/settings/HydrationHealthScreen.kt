@@ -601,7 +601,7 @@ private fun HealthConnectHistorySheet(
     waterIntakeRepository: WaterIntakeRepository?,
     onDismiss: () -> Unit
 ) {
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = false)
+    val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
     var entries by remember { mutableStateOf<List<WaterIntakeEntry>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var refreshTrigger by remember { mutableIntStateOf(0) }
