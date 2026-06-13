@@ -6,6 +6,8 @@ package com.cemcakmak.hydrotracker.notifications
 import android.content.Context
 import com.cemcakmak.hydrotracker.R
 import com.cemcakmak.hydrotracker.data.models.ReminderStyle
+import com.cemcakmak.hydrotracker.data.models.VolumeUnit
+import com.cemcakmak.hydrotracker.utils.VolumeUnitConverter
 import java.util.Locale
 
 /**
@@ -22,14 +24,14 @@ object NotificationContentProvider {
     fun getNotificationContent(
         context: Context,
         reminderStyle: ReminderStyle,
-        userName: String? = null,
         currentProgress: Float = 0f,
-        dailyGoal: Double = 2700.0
+        dailyGoal: Double = 2700.0,
+        volumeUnit: VolumeUnit = VolumeUnit.MILLILITRES
     ): NotificationContent {
         return when (reminderStyle) {
-            ReminderStyle.GENTLE -> getGentleContent(context, userName, currentProgress, dailyGoal)
-            ReminderStyle.MOTIVATING -> getMotivatingContent(context, userName, currentProgress, dailyGoal)
-            ReminderStyle.MINIMAL -> getMinimalContent(context, currentProgress, dailyGoal)
+            ReminderStyle.GENTLE -> getGentleContent(context, currentProgress)
+            ReminderStyle.MOTIVATING -> getMotivatingContent(context, currentProgress)
+            ReminderStyle.MINIMAL -> getMinimalContent(context, currentProgress, dailyGoal, volumeUnit)
         }
     }
 
@@ -64,9 +66,7 @@ object NotificationContentProvider {
 
     private fun getGentleContent(
         context: Context,
-        userName: String?,
-        progress: Float,
-        goal: Double
+        progress: Float
     ): NotificationContent {
         val title = context.resources.getStringArray(R.array.notification_gentle_titles).random()
         val message = context.resources.getStringArray(getGentleMessageArray(progress)).random()
@@ -88,9 +88,7 @@ object NotificationContentProvider {
 
     private fun getMotivatingContent(
         context: Context,
-        userName: String?,
-        progress: Float,
-        goal: Double
+        progress: Float
     ): NotificationContent {
         val title = context.resources.getStringArray(R.array.notification_motivating_titles).random()
         val message = context.resources.getStringArray(getMotivatingMessageArray(progress)).random()
@@ -117,14 +115,16 @@ object NotificationContentProvider {
     private fun getMinimalContent(
         context: Context,
         progress: Float,
-        goal: Double
+        goal: Double,
+        volumeUnit: VolumeUnit
     ): NotificationContent {
         val message = when {
             progress < 0.5f -> context.getString(R.string.notification_minimal_message_low)
             progress < 0.8f -> context.getString(R.string.notification_minimal_message_mid)
             else -> {
-                val remaining = ((1 - progress) * goal).toInt()
-                context.getString(R.string.notification_minimal_remaining, remaining)
+                val remaining = ((1 - progress) * goal)
+                val remainingText = VolumeUnitConverter.format(context, remaining, volumeUnit)
+                context.getString(R.string.notification_minimal_remaining, remainingText)
             }
         }
 

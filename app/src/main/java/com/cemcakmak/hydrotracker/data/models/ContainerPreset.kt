@@ -4,8 +4,10 @@ import com.cemcakmak.hydrotracker.R
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.ui.graphics.vector.ImageVector
+import android.content.Context
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
+import com.cemcakmak.hydrotracker.utils.VolumeUnitConverter
 
 /**
  * Predefined container sizes for quick water logging
@@ -24,11 +26,12 @@ data class ContainerPreset(
     val isCustom: Boolean = false,
     @param:StringRes val labelResId: Int = 0
 ) {
-    fun getFormattedVolume(): String {
-        return when {
-            volume >= 1000 -> "${(volume / 1000).format(1)} L"
-            else -> "${volume.toInt()} ml"
-        }
+    /**
+     * Returns the preset volume formatted in the user's preferred [volumeUnit].
+     * Internal storage continues to use millilitres.
+     */
+    fun getFormattedVolume(context: Context, volumeUnit: VolumeUnit): String {
+        return VolumeUnitConverter.format(context, volume, volumeUnit)
     }
 
     companion object {
@@ -93,9 +96,4 @@ data class ContainerPreset(
             )
         }
     }
-}
-
-// Extension function to format Double with specified decimal places
-private fun Double.format(decimals: Int): String {
-    return "%.${decimals}f".format(this)
 }

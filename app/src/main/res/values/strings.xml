@@ -93,9 +93,41 @@
          ============================================================================ -->
     <string name="screen_display_locale_title">Display &amp; Locale</string>
     <string name="display_language_header">Language</string>
+    <string name="display_date_and_time_format_header">Date &amp; Time</string>
     <string name="display_week_start_header">Week start</string>
+    <string name="display_time_format_header">Time Format</string>
+    <string name="display_date_format_header">Date Format</string>
+    <string name="display_volume_unit_header">Volume unit</string>
     <!-- Language option that follows the device language instead of a fixed one -->
     <string name="language_system_default">System default</string>
+
+    <!-- Time format options -->
+    <string name="time_format_system">System</string>
+    <string name="time_format_system_desc">Follows your device locale</string>
+    <string name="time_format_12_hour">12-hour</string>
+    <string name="time_format_12_hour_desc">AM / PM</string>
+    <string name="time_format_24_hour">24-hour</string>
+    <string name="time_format_24_hour_desc">13:00 instead of 1:00 PM</string>
+
+    <!-- Date format options -->
+    <string name="date_format_system">System</string>
+    <string name="date_format_system_desc">Follows your device locale</string>
+    <string name="date_format_day_month_year">16 Jun 2026</string>
+    <string name="date_format_day_month_year_desc">Day / Month / Year</string>
+    <string name="date_format_month_day_year">Jun 16, 2026</string>
+    <string name="date_format_month_day_year_desc">Month / Day / Year</string>
+    <string name="date_format_year_month_day">2026-06-16</string>
+    <string name="date_format_year_month_day_desc">Year / Month / Day</string>
+
+    <!-- Volume unit options -->
+    <string name="unit_millilitres">Millilitres</string>
+    <string name="unit_ml_short">ml</string>
+    <string name="unit_us_fl_oz">US fluid ounces</string>
+    <string name="unit_us_fl_oz_short">fl oz</string>
+    <string name="unit_imperial_fl_oz">Imperial fluid ounces</string>
+    <string name="unit_imperial_fl_oz_short">fl oz (UK)</string>
+    <string name="unit_us_cup">US cups</string>
+    <string name="unit_us_cup_short">cup</string>
 
     <!-- ============================================================================
          Onboarding
@@ -206,9 +238,10 @@
     <string name="container_edit_title">Edit Container</string>
     <string name="container_name_label">Container Name</string>
     <string name="container_name_placeholder">e.g., Coffee Mug</string>
-    <string name="container_volume_label">Volume (ml)</string>
+    <string name="container_volume_label">Volume (%1$s)</string>
     <string name="container_volume_placeholder">e.g., 250</string>
-    <string name="container_volume_error">Enter a valid volume (1–5000 ml)</string>
+    <!-- %1$s = minimum valid amount, %2$s = maximum valid amount (both with unit) -->
+    <string name="container_volume_error">Enter a valid volume (%1$s–%2$s)</string>
     <string name="container_icon_auto">Icon updates automatically based on volume</string>
     <string name="container_delete_title">Delete Container?</string>
 
@@ -388,11 +421,10 @@
     <string name="hc_restored_snackbar">Restored %1$d entries, skipped %2$d duplicates</string>
     <string name="hc_no_data_title">No Water Intake Data</string>
     <string name="hc_no_data_desc">No water intake entries found in the database.</string>
-    <string name="hc_amount_ml">%1$d ml</string>
-    <!-- %1$d = volume, %2$s = container label -->
-    <string name="hc_amount_line">Amount: %1$d ml (%2$s)</string>
-    <!-- %1$s = beverage name, %2$d = effective ml -->
-    <string name="hc_beverage_eff">Beverage: %1$s (%2$dml eff.)</string>
+    <!-- %1$s = volume, %2$s = container label -->
+    <string name="hc_amount_line">Amount: %1$s (%2$s)</string>
+    <!-- %1$s = beverage name, %2$s = effective amount with unit -->
+    <string name="hc_beverage_eff">Beverage: %1$s (%2$s eff.)</string>
     <string name="hc_beverage">Beverage: %1$s</string>
     <string name="hc_badge_external">External</string>
     <string name="hc_record_id">Health Connect ID: %1$s</string>
@@ -649,9 +681,11 @@
     <!-- ============================================================================
          Health Connect Data screen
          ============================================================================ -->
-    <string name="hc_container_line">Container: %1$s (%2$d ml)</string>
-    <string name="hc_beverage_detail">%1$s • %2$dml effective</string>
-    <string name="hc_beverage_detail_eff">%1$s • %2$dml raw → %3$dml effective</string>
+    <string name="hc_container_line">Container: %1$s (%2$s)</string>
+    <!-- %1$s = beverage name, %2$s = effective amount with unit -->
+    <string name="hc_beverage_detail">%1$s • %2$s effective</string>
+    <!-- %1$s = beverage name, %2$s = raw amount with unit, %3$s = effective amount with unit -->
+    <string name="hc_beverage_detail_eff">%1$s • %2$s raw → %3$s effective</string>
     <string name="hc_note_label">Note: %1$s</string>
     <string name="health_connect_status_unavailable">Health Connect is not available on this device</string>
     <string name="health_connect_status_update_required">Health Connect app needs to be updated</string>
@@ -679,10 +713,11 @@
 
     <!-- Dialogue labels -->
     <string name="home_label_beverage_type">Beverage Type</string>
-    <string name="home_label_amount_ml">Amount (ml)</string>
+    <string name="home_label_amount_ml">Amount (%1$s)</string>
     <string name="home_label_container_type">Container Type</string>
     <string name="home_label_time">Time</string>
-    <string name="home_error_amount_invalid">Please enter a valid amount (1–5000 ml)</string>
+    <!-- %1$s = minimum valid amount, %2$s = maximum valid amount (both with unit) -->
+    <string name="home_error_amount_invalid">Please enter a valid amount (%1$s–%2$s)</string>
     <string name="home_label_selected_beverage">Selected: %1$s</string>
     <string name="home_label_hydration_effectiveness">Hydration effectiveness: %1$d%%</string>
     <string name="home_label_effective_hydration">Effective Hydration: %1$d%%</string>
@@ -786,12 +821,14 @@
     <!-- Daily goal bottom sheet -->
     <string name="profile_goal_edit_title">Edit Daily Goal</string>
     <string name="profile_goal_edit_description">Set your daily water intake goal. This will be used to track your progress and calculate reminders.</string>
-    <!-- %1$s = formatted litres such as "2.50" -->
-    <string name="profile_goal_slider_label">Use slider to adjust: %1$s L</string>
+    <!-- %1$s = formatted amount in the user's volume unit -->
+    <string name="profile_goal_slider_label">Use slider to adjust: %1$s</string>
     <string name="profile_goal_manual_label">Or enter manually:</string>
-    <string name="profile_goal_input_label">Daily Goal (Litres)</string>
-    <string name="profile_goal_input_error">Please enter a valid amount (0.5–10 L)</string>
-    <string name="profile_goal_input_hint">Recommended: 1.5 – 4.0 litres per day</string>
+    <string name="profile_goal_input_label">Daily Goal (%1$s)</string>
+    <!-- %1$s = minimum valid amount, %2$s = maximum valid amount (both with unit) -->
+    <string name="profile_goal_input_error">Please enter a valid amount (%1$s–%2$s)</string>
+    <!-- %1$s = minimum recommended amount, %2$s = maximum recommended amount (both with unit) -->
+    <string name="profile_goal_input_hint">Recommended: %1$s – %2$s per day</string>
 
     <!-- Activity level bottom sheet -->
     <string name="profile_activity_title">Activity Level</string>
@@ -892,12 +929,12 @@
     <!-- %1$s = the random water fact -->
     <string name="notification_gentle_fact_prefix">Did you know? %1$s</string>
     <!-- %1$d = remaining milliliters -->
-    <string name="notification_minimal_remaining">%1$d ml remaining</string>
+    <string name="notification_minimal_remaining">%1$s remaining</string>
 
     <!-- Quick-add success notification -->
     <string name="notification_quick_add_title">💧 Water Added!</string>
     <!-- %1$d = amount added in ml -->
-    <string name="notification_quick_add_text">Added %1$d ml to your daily intake</string>
+    <string name="notification_quick_add_text">Added %1$s to your daily intake</string>
     <string name="notification_quick_add_preset_name">Quick Add</string>
     <string name="notification_quick_add_note">Added from notification</string>
 
@@ -1027,6 +1064,8 @@
     <!-- Minimal reminder messages -->
     <string name="notification_minimal_message_low">Time to hydrate</string>
     <string name="notification_minimal_message_mid">Continue hydrating</string>
+    <string name="date_format_title">Date Format</string>
+    <string name="week_start_format_title">Week Start</string>
 
     <!-- Water facts shown with gentle reminders -->
     <string-array name="notification_facts">

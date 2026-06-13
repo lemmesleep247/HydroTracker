@@ -10,12 +10,12 @@ import com.cemcakmak.hydrotracker.MainActivity
 import com.cemcakmak.hydrotracker.R
 import com.cemcakmak.hydrotracker.data.repository.UserRepository
 import com.cemcakmak.hydrotracker.data.database.DatabaseInitializer
+import com.cemcakmak.hydrotracker.utils.VolumeUnitConverter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
-import java.util.*
 
 /**
  * HydroTracker Compact Widget (1x1)
@@ -57,12 +57,17 @@ class HydroCompactWidget : AppWidgetProvider() {
                 
                 val progress = waterRepository.getTodayProgress().first()
                 val userProfile = userRepository.userProfile.first()
-                
+                val themePreferences = userRepository.themePreferences.first()
+                val volumeUnit = userProfile?.volumeUnit
+                    ?: com.cemcakmak.hydrotracker.data.models.VolumeUnit.MILLILITRES
+
                 val views = RemoteViews(context.packageName, R.layout.widget_hydro_compact)
-                
+
                 // Update progress text - compact format
-                val currentText = formatCompact(progress.currentIntake)
-                val goalText = userProfile?.let { formatCompact(it.dailyWaterGoal) } ?: "2.7L"
+                val currentText = formatCompact(context, progress.currentIntake, volumeUnit)
+                val goalText = userProfile?.let {
+                    formatCompact(context, it.dailyWaterGoal, volumeUnit)
+                } ?: formatCompact(context, 2700.0, volumeUnit)
                 val progressText = "$currentText / $goalText"
                 
                 views.setTextViewText(R.id.widget_progress_text, progressText)
@@ -75,10 +80,19 @@ class HydroCompactWidget : AppWidgetProvider() {
                 )
                 
                 // Update time - compact format
-                val timeFormat = android.text.format.DateFormat.getTimeFormat(context)
+                val lastUpdatedTime = java.time.Instant.ofEpochMilli(System.currentTimeMillis())
+                    .atZone(java.time.ZoneId.systemDefault())
+                    .toLocalTime()
                 views.setTextViewText(
                     R.id.widget_last_updated,
-                    context.getString(R.string.widget_updated_at, timeFormat.format(Date()))
+                    context.getString(
+                        R.string.widget_updated_at,
+                        com.cemcakmak.hydrotracker.utils.DateTimeFormatters.formatTime(
+                            context,
+                            lastUpdatedTime,
+                            themePreferences.timeFormat
+                        )
+                    )
                 )
                 
                 // Set circular progress
@@ -115,9 +129,10 @@ class HydroCompactWidget : AppWidgetProvider() {
     ) {
         val views = RemoteViews(context.packageName, R.layout.widget_hydro_compact)
         
+        val defaultUnit = com.cemcakmak.hydrotracker.data.models.VolumeUnit.MILLILITRES
         views.setTextViewText(
             R.id.widget_progress_text,
-            "${formatCompact(0.0)} / ${formatCompact(2700.0)}"
+            "${formatCompact(context, 0.0, defaultUnit)} / ${formatCompact(context, 2700.0, defaultUnit)}"
         )
         views.setTextViewText(
             R.id.widget_progress_percent,
@@ -136,11 +151,12 @@ class HydroCompactWidget : AppWidgetProvider() {
         appWidgetManager.updateAppWidget(appWidgetId, views)
     }
     
-    private fun formatCompact(amount: Double): String {
-        return when {
-            amount >= 1000 -> String.format(Locale.getDefault(), "%.1fL", amount / 1000)
-            else -> "${amount.toInt()}ml"
-        }
+    private fun formatCompact(
+        context: Context,
+        amount: Double,
+        volumeUnit: com.cemcakmak.hydrotracker.data.models.VolumeUnit
+    ): String {
+        return VolumeUnitConverter.format(context, amount, volumeUnit)
     }
     
 }

@@ -28,12 +28,14 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun <T> BlurMorph(
+    modifier: Modifier = Modifier,
     targetState: T,
     content: @Composable (state: T, blurModifier: Modifier) -> Unit
 ) {
     val fadeSpec = tween<Float>(durationMillis = 600, delayMillis = 100, easing = EaseInOut)
     val blurSpec = tween<Dp>(durationMillis = 800, easing = EaseInOut)
     AnimatedContent(
+        modifier = modifier,
         targetState = targetState,
         transitionSpec = {
             (fadeIn(fadeSpec) togetherWith fadeOut(fadeSpec)) using SizeTransform(clip = false)

@@ -10,13 +10,12 @@ import com.cemcakmak.hydrotracker.MainActivity
 import com.cemcakmak.hydrotracker.R
 import com.cemcakmak.hydrotracker.data.repository.UserRepository
 import com.cemcakmak.hydrotracker.data.database.DatabaseInitializer
-import com.cemcakmak.hydrotracker.utils.WaterCalculator
+import com.cemcakmak.hydrotracker.utils.VolumeUnitConverter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
-import java.util.*
 
 /**
  * HydroTracker Large Widget (4x2)
@@ -101,12 +100,17 @@ class HydroLargeWidget : AppWidgetProvider() {
                 
                 val progress = waterRepository.getTodayProgress().first()
                 val userProfile = userRepository.userProfile.first()
-                
+                val themePreferences = userRepository.themePreferences.first()
+                val volumeUnit = userProfile?.volumeUnit
+                    ?: com.cemcakmak.hydrotracker.data.models.VolumeUnit.MILLILITRES
+
                 val views = RemoteViews(context.packageName, R.layout.widget_hydro_large)
-                
+
                 // Update progress text
-                val currentText = WaterCalculator.formatWaterAmount(progress.currentIntake)
-                val goalText = userProfile?.let { WaterCalculator.formatWaterAmount(it.dailyWaterGoal) } ?: "2700ml"
+                val currentText = VolumeUnitConverter.format(context, progress.currentIntake, volumeUnit)
+                val goalText = userProfile?.let {
+                    VolumeUnitConverter.format(context, it.dailyWaterGoal, volumeUnit)
+                } ?: VolumeUnitConverter.format(context, 2700.0, volumeUnit)
                 val progressText = "$currentText / $goalText"
                 
                 views.setTextViewText(R.id.widget_progress_text, progressText)
@@ -119,15 +123,24 @@ class HydroLargeWidget : AppWidgetProvider() {
                 )
                 
                 // Update last updated time
-                val timeFormat = android.text.format.DateFormat.getTimeFormat(context)
-                val lastUpdated = context.getString(R.string.widget_updated_at, timeFormat.format(Date()))
+                val lastUpdatedTime = java.time.Instant.ofEpochMilli(System.currentTimeMillis())
+                    .atZone(java.time.ZoneId.systemDefault())
+                    .toLocalTime()
+                val lastUpdated = context.getString(
+                    R.string.widget_updated_at,
+                    com.cemcakmak.hydrotracker.utils.DateTimeFormatters.formatTime(
+                        context,
+                        lastUpdatedTime,
+                        themePreferences.timeFormat
+                    )
+                )
                 views.setTextViewText(R.id.widget_last_updated, lastUpdated)
                 
                 // Set progress bar
                 views.setProgressBar(R.id.widget_progress_bar, 100, progressPercent, false)
                 
                 // Set up quick add buttons
-                setupQuickAddButtons(context, views)
+                setupQuickAddButtons(context, views, volumeUnit)
                 
                 // Set main click intent
                 val intent = Intent(context, MainActivity::class.java)
@@ -160,23 +173,24 @@ class HydroLargeWidget : AppWidgetProvider() {
         }
     }
     
-    private fun setupQuickAddButtons(context: Context, views: RemoteViews) {
-        // Set quick-add button labels from unit-format strings
+    private fun setupQuickAddButtons(context: Context, views: RemoteViews, volumeUnit: com.cemcakmak.hydrotracker.data.models.VolumeUnit) {
+        // Set quick-add button labels formatted in the user's preferred volume unit.
+        // The button actions still add the fixed millilitre amounts to keep behaviour predictable.
         views.setTextViewText(
             R.id.widget_btn_250_text,
-            context.getString(R.string.unit_milliliters_format, "250")
+            VolumeUnitConverter.format(context, 250.0, volumeUnit)
         )
         views.setTextViewText(
             R.id.widget_btn_300_text,
-            context.getString(R.string.unit_milliliters_format, "300")
+            VolumeUnitConverter.format(context, 300.0, volumeUnit)
         )
         views.setTextViewText(
             R.id.widget_btn_500_text,
-            context.getString(R.string.unit_milliliters_format, "500")
+            VolumeUnitConverter.format(context, 500.0, volumeUnit)
         )
         views.setTextViewText(
             R.id.widget_btn_1l_text,
-            context.getString(R.string.unit_liters_format, "1")
+            VolumeUnitConverter.format(context, 1000.0, volumeUnit)
         )
 
         // 250ml button
@@ -235,9 +249,10 @@ class HydroLargeWidget : AppWidgetProvider() {
     ) {
         val views = RemoteViews(context.packageName, R.layout.widget_hydro_large)
         
+        val defaultUnit = com.cemcakmak.hydrotracker.data.models.VolumeUnit.MILLILITRES
         views.setTextViewText(
             R.id.widget_progress_text,
-            "${WaterCalculator.formatWaterAmount(0.0)} / ${WaterCalculator.formatWaterAmount(2700.0)}"
+            "${VolumeUnitConverter.format(context, 0.0, defaultUnit)} / ${VolumeUnitConverter.format(context, 2700.0, defaultUnit)}"
         )
         views.setTextViewText(
             R.id.widget_progress_percent,
@@ -253,7 +268,7 @@ class HydroLargeWidget : AppWidgetProvider() {
         )
         views.setOnClickPendingIntent(R.id.widget_container, pendingIntent)
 
-        setupQuickAddButtons(context, views)
+        setupQuickAddButtons(context, views, defaultUnit)
 
         appWidgetManager.updateAppWidget(appWidgetId, views)
     }

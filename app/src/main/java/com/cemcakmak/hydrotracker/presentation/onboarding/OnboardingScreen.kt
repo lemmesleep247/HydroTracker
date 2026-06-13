@@ -16,8 +16,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.cemcakmak.hydrotracker.R
+import com.cemcakmak.hydrotracker.data.models.ThemePreferences
 import com.cemcakmak.hydrotracker.ui.theme.HydroTrackerTheme
 
 /**
@@ -38,6 +40,7 @@ enum class OnboardingStep {
 @Composable
 fun OnboardingScreen(
     onNavigateToHome: () -> Unit = {},
+    themePreferences: ThemePreferences = ThemePreferences(),
     viewModel: OnboardingViewModel = viewModel()
 ) {
     val currentStep by viewModel.currentStep.collectAsState()
@@ -200,7 +203,7 @@ fun OnboardingScreen(
                     )
                     OnboardingStep.PROFILE_SETUP -> ProfileSetupStep(
                         name = userProfile.name,
-                        profileImageUri = userProfile.profileImagePath?.let { android.net.Uri.parse(it) },
+                        profileImageUri = userProfile.profileImagePath?.toUri(),
                         onNameChanged = { viewModel.updateName(it) },
                         onImageSelected = { uri -> viewModel.updateProfileImage(uri) },
                         title = stringResource(viewModel.getStepTitleRes()),
@@ -208,6 +211,7 @@ fun OnboardingScreen(
                     )
                     OnboardingStep.GOAL -> GoalStep(
                         userProfile = userProfile,
+                        themePreferences = themePreferences,
                         title = stringResource(viewModel.getStepTitleRes()),
                         description = stringResource(viewModel.getStepDescriptionRes())
                     )

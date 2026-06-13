@@ -14,6 +14,7 @@ import com.cemcakmak.hydrotracker.data.models.*
 import com.cemcakmak.hydrotracker.data.repository.UserRepository
 import com.cemcakmak.hydrotracker.notifications.NotificationPermissionManager
 import com.cemcakmak.hydrotracker.notifications.HydroNotificationScheduler
+import com.cemcakmak.hydrotracker.utils.VolumeUnitConverter
 import com.cemcakmak.hydrotracker.utils.WaterCalculator
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -199,8 +200,10 @@ class OnboardingViewModel(
         println("DEBUG: OnboardingViewModel.completeOnboarding() called")
 
         viewModelScope.launch {
+            val context = getApplication<Application>()
             val completedProfile = _userProfile.value.copy(
-                isOnboardingCompleted = true
+                isOnboardingCompleted = true,
+                volumeUnit = VolumeUnitConverter.defaultUnitForLocale(context.resources.configuration.locales.get(0))
             )
 
             println("DEBUG: Saving completed profile to repository.")
@@ -215,7 +218,6 @@ class OnboardingViewModel(
             println("DEBUG: OnboardingViewModel - Profile completion status: ${completedProfile.isOnboardingCompleted}")
 
             // NEW: Start notifications if permission is granted
-            val context = getApplication<Application>()
             if (NotificationPermissionManager.hasNotificationPermission(context)) {
                 println("DEBUG: Starting notifications after onboarding completion")
                 HydroNotificationScheduler.startNotifications(context, completedProfile)

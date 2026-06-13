@@ -27,26 +27,39 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.cemcakmak.hydrotracker.R
 import com.cemcakmak.hydrotracker.data.models.ContainerPreset
+import com.cemcakmak.hydrotracker.data.models.VolumeUnit
 import com.cemcakmak.hydrotracker.ui.theme.HydroTrackerTheme
 import com.cemcakmak.hydrotracker.utils.ContainerIconMapper
+import com.cemcakmak.hydrotracker.utils.VolumeUnitConverter
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun EditContainerPresetSheetContent(
     preset: ContainerPreset,
+    volumeUnit: VolumeUnit,
     onSave: (name: String, volume: Double) -> Unit,
     onDelete: () -> Unit
 ) {
+
+    val minVolumeMl = 1.0
+    val maxVolumeMl = 5000.0
+    val minVolumeDisplay = VolumeUnitConverter.formatValue(minVolumeMl, volumeUnit)
+    val maxVolumeDisplay = VolumeUnitConverter.formatValue(maxVolumeMl, volumeUnit)
+    val unitShortLabel = stringResource(volumeUnit.shortLabelResId)
+
     var name by remember { mutableStateOf(preset.name) }
-    var volumeText by remember { mutableStateOf(preset.volume.toInt().toString()) }
+    var volumeText by remember {
+        mutableStateOf(VolumeUnitConverter.formatValue(preset.volume, volumeUnit))
+    }
     var showDeleteConfirmation by remember { mutableStateOf(false) }
     var nameError by remember { mutableStateOf(false) }
     var volumeError by remember { mutableStateOf(false) }
 
-    // Calculate preview icon based on current volume
-    val previewIcon = remember(volumeText) {
-        val volume = volumeText.toDoubleOrNull() ?: preset.volume
-        ContainerIconMapper.getIconForVolume(volume)
+    // Calculate preview icon based on current volume (converted back to millilitres)
+    val previewIcon = remember(volumeText, volumeUnit) {
+        val volumeInUserUnit = volumeText.toDoubleOrNull() ?: 0.0
+        val volumeInMl = VolumeUnitConverter.toMillilitres(volumeInUserUnit, volumeUnit)
+        ContainerIconMapper.getIconForVolume(if (volumeInMl > 0) volumeInMl else preset.volume)
     }
 
     Column(
@@ -126,13 +139,15 @@ private fun EditContainerPresetSheetContent(
                 volumeText = it
                 volumeError = false
             },
-            label = { Text(stringResource(R.string.container_volume_label)) },
+            label = { Text(stringResource(R.string.container_volume_label, unitShortLabel)) },
             placeholder = { Text(stringResource(R.string.container_volume_placeholder)) },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = if (volumeUnit == VolumeUnit.MILLILITRES) KeyboardType.Number else KeyboardType.Decimal
+            ),
             isError = volumeError,
             shape = RoundedCornerShape(50.dp),
             supportingText = if (volumeError) {
-                { Text(stringResource(R.string.container_volume_error)) }
+                { Text(stringResource(R.string.container_volume_error, minVolumeDisplay, maxVolumeDisplay)) }
             } else {
                 { Text(stringResource(R.string.container_icon_auto)) }
             },
@@ -212,13 +227,16 @@ private fun EditContainerPresetSheetContent(
                     Button(
                         onClick = {
                             val trimmedName = name.trim()
-                            val volume = volumeText.toDoubleOrNull()
+                            val volumeInUserUnit = volumeText.toDoubleOrNull()
 
                             nameError = trimmedName.isEmpty()
-                            volumeError = volume == null || volume <= 0 || volume > 5000
+                            val volumeInMl = volumeInUserUnit?.let {
+                                VolumeUnitConverter.toMillilitres(it, volumeUnit)
+                            }
+                            volumeError = volumeInMl == null || volumeInMl <= 0 || volumeInMl > maxVolumeMl
 
-                            if (!nameError && !volumeError && volume != null) {
-                                onSave(trimmedName, volume)
+                            if (!nameError && !volumeError && volumeInMl != null) {
+                                onSave(trimmedName, volumeInMl)
                             }
                         },
                         shapes = ButtonDefaults.shapes(),
@@ -248,7 +266,7 @@ private fun EditContainerPresetSheetContent(
         }
     }
 
-    // Delete confirmation dialog
+    // Delete confirmation dialogue
     if (showDeleteConfirmation) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirmation = false },
@@ -373,6 +391,7 @@ private fun EditContainerPresetSheetContent(
 @Composable
 fun EditContainerPresetBottomSheet(
     preset: ContainerPreset,
+    volumeUnit: VolumeUnit,
     onDismiss: () -> Unit,
     onSave: (name: String, volume: Double) -> Unit,
     onDelete: () -> Unit
@@ -384,6 +403,7 @@ fun EditContainerPresetBottomSheet(
     ) {
         EditContainerPresetSheetContent(
             preset = preset,
+            volumeUnit = volumeUnit,
             onSave = onSave,
             onDelete = onDelete
         )
@@ -393,17 +413,26 @@ fun EditContainerPresetBottomSheet(
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun AddContainerPresetSheetContent(
+    volumeUnit: VolumeUnit,
     onAdd: (name: String, volume: Double) -> Unit
 ) {
+
+    val minVolumeMl = 1.0
+    val maxVolumeMl = 5000.0
+    val minVolumeDisplay = VolumeUnitConverter.formatValue(minVolumeMl, volumeUnit)
+    val maxVolumeDisplay = VolumeUnitConverter.formatValue(maxVolumeMl, volumeUnit)
+    val unitShortLabel = stringResource(volumeUnit.shortLabelResId)
+
     var name by remember { mutableStateOf("") }
     var volumeText by remember { mutableStateOf("") }
     var nameError by remember { mutableStateOf(false) }
     var volumeError by remember { mutableStateOf(false) }
 
-    // Calculate preview icon based on current volume
-    val previewIcon = remember(volumeText) {
-        val volume = volumeText.toDoubleOrNull() ?: 250.0
-        ContainerIconMapper.getIconForVolume(volume)
+    // Calculate preview icon based on current volume (converted back to millilitres)
+    val previewIcon = remember(volumeText, volumeUnit) {
+        val volumeInUserUnit = volumeText.toDoubleOrNull() ?: 250.0
+        val volumeInMl = VolumeUnitConverter.toMillilitres(volumeInUserUnit, volumeUnit)
+        ContainerIconMapper.getIconForVolume(volumeInMl)
     }
 
     Column(
@@ -481,13 +510,15 @@ private fun AddContainerPresetSheetContent(
                 volumeText = it
                 volumeError = false
             },
-            label = { Text(stringResource(R.string.container_volume_label)) },
+            label = { Text(stringResource(R.string.container_volume_label, unitShortLabel)) },
             placeholder = { Text(stringResource(R.string.container_volume_placeholder)) },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            keyboardOptions = KeyboardOptions(
+                keyboardType = if (volumeUnit == VolumeUnit.MILLILITRES) KeyboardType.Number else KeyboardType.Decimal
+            ),
             isError = volumeError,
             shape = RoundedCornerShape(50.dp),
             supportingText = if (volumeError) {
-                { Text(stringResource(R.string.container_volume_error)) }
+                { Text(stringResource(R.string.container_volume_error, minVolumeDisplay, maxVolumeDisplay)) }
             } else {
                 { Text(stringResource(R.string.container_icon_auto)) }
             },
@@ -502,13 +533,16 @@ private fun AddContainerPresetSheetContent(
             onClick = {
                 haptics.performHapticFeedback(HapticFeedbackType.Confirm)
                 val trimmedName = name.trim()
-                val volume = volumeText.toDoubleOrNull()
+                val volumeInUserUnit = volumeText.toDoubleOrNull()
 
                 nameError = trimmedName.isEmpty()
-                volumeError = volume == null || volume <= 0 || volume > 5000
+                val volumeInMl = volumeInUserUnit?.let {
+                    VolumeUnitConverter.toMillilitres(it, volumeUnit)
+                }
+                volumeError = volumeInMl == null || volumeInMl <= 0 || volumeInMl > maxVolumeMl
 
-                if (!nameError && !volumeError && volume != null) {
-                    onAdd(trimmedName, volume)
+                if (!nameError && !volumeError && volumeInMl != null) {
+                    onAdd(trimmedName, volumeInMl)
                 }
             },
             colors = ButtonDefaults.filledTonalButtonColors(
@@ -532,6 +566,7 @@ private fun AddContainerPresetSheetContent(
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun AddContainerPresetBottomSheet(
+    volumeUnit: VolumeUnit,
     onDismiss: () -> Unit,
     onAdd: (name: String, volume: Double) -> Unit
 ) {
@@ -540,7 +575,7 @@ fun AddContainerPresetBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState
     ) {
-        AddContainerPresetSheetContent(onAdd = onAdd)
+        AddContainerPresetSheetContent(volumeUnit = volumeUnit, onAdd = onAdd)
     }
 }
 
@@ -561,6 +596,7 @@ fun EditContainerPresetBottomSheetPreview() {
                 BottomSheetDefaults.DragHandle()
                 EditContainerPresetSheetContent(
                     preset = ContainerPreset.getDefaultPresets().first(),
+                    volumeUnit = VolumeUnit.MILLILITRES,
                     onSave = { _, _ -> },
                     onDelete = {}
                 )
@@ -584,7 +620,10 @@ fun AddContainerPresetBottomSheetPreview() {
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 BottomSheetDefaults.DragHandle()
-                AddContainerPresetSheetContent(onAdd = { _, _ -> })
+                AddContainerPresetSheetContent(
+                    volumeUnit = VolumeUnit.MILLILITRES,
+                    onAdd = { _, _ -> }
+                )
             }
         }
     }

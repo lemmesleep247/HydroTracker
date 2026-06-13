@@ -18,6 +18,11 @@ import com.cemcakmak.hydrotracker.R
 import com.cemcakmak.hydrotracker.data.models.ActivityLevel
 import com.cemcakmak.hydrotracker.data.models.Gender
 import com.cemcakmak.hydrotracker.data.models.AgeGroup
+import com.cemcakmak.hydrotracker.data.models.ThemePreferences
+import com.cemcakmak.hydrotracker.data.models.UserProfile
+import com.cemcakmak.hydrotracker.utils.DateTimeFormatters
+import com.cemcakmak.hydrotracker.utils.VolumeUnitConverter
+import androidx.compose.ui.platform.LocalContext
 import java.util.Locale
 
 /**
@@ -33,17 +38,28 @@ import java.util.Locale
 fun GoalEditBottomSheet(
     showBottomSheet: Boolean,
     currentGoal: Double,
+    userProfile: UserProfile,
     onDismiss: () -> Unit,
     onConfirm: (Double) -> Unit
 ) {
+    val context = LocalContext.current
+    val volumeUnit = userProfile.volumeUnit
     val bottomSheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
     var sliderValue by remember(currentGoal) { mutableFloatStateOf(currentGoal.toFloat() / 1000f) }
-    var goalText by remember(currentGoal) { mutableStateOf(String.format(Locale.getDefault(), "%.2f", currentGoal / 1000)) }
+    var goalText by remember(currentGoal) {
+        mutableStateOf(VolumeUnitConverter.formatValue(currentGoal, volumeUnit))
+    }
     var isError by remember { mutableStateOf(false) }
+
+    val minGoalMl = 500.0
+    val maxGoalMl = 10000.0
+    val recommendedMinMl = 1500.0
+    val recommendedMaxMl = 4000.0
+    val unitShortLabel = stringResource(volumeUnit.shortLabelResId)
 
     // Update text when slider changes
     LaunchedEffect(sliderValue) {
-        goalText = String.format(Locale.getDefault(), "%.2f", sliderValue)
+        goalText = VolumeUnitConverter.formatValue(sliderValue * 1000.0, volumeUnit)
     }
 
     if (showBottomSheet) {
@@ -90,7 +106,7 @@ fun GoalEditBottomSheet(
                     Text(
                         text = stringResource(
                             R.string.profile_goal_slider_label,
-                            String.format(Locale.getDefault(), "%.2f", sliderValue)
+                            VolumeUnitConverter.format(context, sliderValue * 1000.0, volumeUnit)
                         ),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
@@ -129,12 +145,12 @@ fun GoalEditBottomSheet(
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
                         Text(
-                            text = stringResource(R.string.unit_liters_format, "1.0"),
+                            text = VolumeUnitConverter.format(context, 1000.0, userProfile.volumeUnit),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                         Text(
-                            text = stringResource(R.string.unit_liters_format, "5.0"),
+                            text = VolumeUnitConverter.format(context, 5000.0, userProfile.volumeUnit),
                             style = MaterialTheme.typography.labelMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -158,18 +174,24 @@ fun GoalEditBottomSheet(
                             isError = false
                             // Update slider when text changes (only if within slider range)
                             newText.toDoubleOrNull()?.let { value ->
-                                if (value in 1.0..5.0) {
-                                    sliderValue = value.toFloat()
+                                val valueInMl = VolumeUnitConverter.toMillilitres(value, volumeUnit)
+                                val valueInLitres = valueInMl / 1000.0
+                                if (valueInLitres in 1.0..5.0) {
+                                    sliderValue = valueInLitres.toFloat()
                                 }
                             }
                         },
-                        label = { Text(stringResource(R.string.profile_goal_input_label)) },
+                        label = { Text(stringResource(R.string.profile_goal_input_label, unitShortLabel)) },
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         isError = isError,
                         supportingText = if (isError) {
-                            { Text(stringResource(R.string.profile_goal_input_error)) }
+                            { Text(stringResource(R.string.profile_goal_input_error,
+                                VolumeUnitConverter.formatValue(minGoalMl, volumeUnit),
+                                VolumeUnitConverter.formatValue(maxGoalMl, volumeUnit))) }
                         } else {
-                            { Text(stringResource(R.string.profile_goal_input_hint)) }
+                            { Text(stringResource(R.string.profile_goal_input_hint,
+                                VolumeUnitConverter.formatValue(recommendedMinMl, volumeUnit),
+                                VolumeUnitConverter.formatValue(recommendedMaxMl, volumeUnit))) }
                         },
                         modifier = Modifier.fillMaxWidth()
                     )
@@ -192,9 +214,14 @@ fun GoalEditBottomSheet(
                         shapes = ButtonDefaults.shapes(),
                         onClick = {
                             haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
-                            val goalLiters = sliderValue.toDouble()
-                            if (goalLiters >= 0.5 && goalLiters <= 10.0) {
-                                onConfirm(goalLiters * 1000) // Convert to ml
+                            val goalInUserUnit = goalText.toDoubleOrNull()
+                            if (goalInUserUnit != null && goalInUserUnit > 0) {
+                                val goalInMl = VolumeUnitConverter.toMillilitres(goalInUserUnit, volumeUnit)
+                                if (goalInMl in minGoalMl..maxGoalMl) {
+                                    onConfirm(goalInMl)
+                                } else {
+                                    isError = true
+                                }
                             } else {
                                 isError = true
                             }
@@ -302,8 +329,10 @@ fun ScheduleEditBottomSheet(
     currentWakeUpTime: String,
     currentSleepTime: String,
     onDismiss: () -> Unit,
-    onConfirm: (String, String) -> Unit
+    onConfirm: (String, String) -> Unit,
+    themePreferences: ThemePreferences = ThemePreferences()
 ) {
+    val context = LocalContext.current
     val bottomSheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
     
     // Parse current times
@@ -393,7 +422,11 @@ fun ScheduleEditBottomSheet(
                                         tint = MaterialTheme.colorScheme.primary
                                     )
                                     Text(
-                                        text = String.format(Locale.getDefault(), "%02d:%02d", wakeUpHour, wakeUpMinute),
+                                        text = DateTimeFormatters.formatTime(
+                                            context,
+                                            java.time.LocalTime.of(wakeUpHour, wakeUpMinute),
+                                            themePreferences.timeFormat
+                                        ),
                                         style = MaterialTheme.typography.headlineSmall,
                                         fontWeight = FontWeight.Bold
                                     )
@@ -441,7 +474,11 @@ fun ScheduleEditBottomSheet(
                                         tint = MaterialTheme.colorScheme.primary
                                     )
                                     Text(
-                                        text = String.format(Locale.getDefault(), "%02d:%02d", sleepHour, sleepMinute),
+                                        text = DateTimeFormatters.formatTime(
+                                            context,
+                                            java.time.LocalTime.of(sleepHour, sleepMinute),
+                                            themePreferences.timeFormat
+                                        ),
                                         style = MaterialTheme.typography.headlineSmall,
                                         fontWeight = FontWeight.Bold
                                     )
@@ -769,7 +806,7 @@ fun WeightEditBottomSheet(
                                 weightText.toDoubleOrNull()
                             }
 
-                            if (weight != null && (weight < 30 || weight > 300)) {
+                            if (weight != null && (weight !in 30.0..300.0)) {
                                 isWeightError = true
                             } else {
                                 onConfirm(weight)

@@ -10,19 +10,27 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.cemcakmak.hydrotracker.R
+import com.cemcakmak.hydrotracker.data.models.VolumeUnit
+import com.cemcakmak.hydrotracker.utils.DateTimeFormatters
+import com.cemcakmak.hydrotracker.utils.VolumeUnitConverter
 import com.cemcakmak.hydrotracker.data.database.entities.WaterIntakeEntry
 import com.cemcakmak.hydrotracker.data.database.repository.WaterIntakeRepository
+import com.cemcakmak.hydrotracker.data.models.ThemePreferences
+import com.cemcakmak.hydrotracker.data.models.UserProfile
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HealthConnectDataScreen(
     waterIntakeRepository: WaterIntakeRepository?,
+    userProfile: UserProfile? = null,
+    themePreferences: ThemePreferences = ThemePreferences(),
     onNavigateBack: () -> Unit = {}
 ) {
     var allEntries by remember { mutableStateOf<List<WaterIntakeEntry>>(emptyList()) }
@@ -121,6 +129,8 @@ fun HealthConnectDataScreen(
                         HealthConnectDataItem(
                             entry = entry,
                             waterIntakeRepository = waterIntakeRepository,
+                            userProfile = userProfile,
+                            themePreferences = themePreferences,
                             onEntryChanged = {
                                 // Trigger refresh
                                 refreshTrigger++
@@ -137,10 +147,13 @@ fun HealthConnectDataScreen(
 private fun HealthConnectDataItem(
     entry: WaterIntakeEntry,
     waterIntakeRepository: WaterIntakeRepository?,
+    userProfile: UserProfile?,
+    themePreferences: ThemePreferences,
     onEntryChanged: () -> Unit
 ) {
+    val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
-    // Use the localized date-time formatting from the entry itself
+    val volumeUnit = userProfile?.volumeUnit ?: VolumeUnit.MILLILITRES
 
     val isExternal = entry.isExternalEntry()
     val isHidden = entry.isHidden
@@ -177,10 +190,7 @@ private fun HealthConnectDataItem(
                         modifier = Modifier.size(20.dp)
                     )
                     Text(
-                        text = stringResource(
-                            R.string.unit_milliliters_format,
-                            entry.getEffectiveHydrationAmount().toInt().toString()
-                        ),
+                        text = entry.getFormattedEffectiveAmount(context, volumeUnit),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -216,17 +226,20 @@ private fun HealthConnectDataItem(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Date and time (fixed ISO 24-hour format for Health Connect consistency)
-            val isoFormatter = remember {
-                java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
-            }
-            val isoDateTime = remember(entry.timestamp) {
-                java.time.Instant.ofEpochMilli(entry.timestamp)
-                    .atZone(java.time.ZoneId.systemDefault())
-                    .format(isoFormatter)
+            // Date and time formatted according to user preferences.
+            // The entry timestamp is still read from the database unchanged.
+            val formattedDateTime = remember(entry.timestamp, themePreferences) {
+                DateTimeFormatters.formatDateTime(
+                    context,
+                    java.time.Instant.ofEpochMilli(entry.timestamp)
+                        .atZone(java.time.ZoneId.systemDefault())
+                        .toLocalDateTime(),
+                    themePreferences.timeFormat,
+                    themePreferences.dateFormat
+                )
             }
             Text(
-                text = isoDateTime,
+                text = formattedDateTime,
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -234,11 +247,12 @@ private fun HealthConnectDataItem(
             // Container info with beverage type details
             if (entry.containerType.isNotEmpty()) {
                 val beverageType = entry.getBeverageType()
-                val rawAmount = entry.amount.toInt()
-                val effectiveAmount = entry.getEffectiveHydrationAmount().toInt()
+                val rawAmountText = entry.getFormattedAmount(context, volumeUnit)
+                val effectiveAmountText = entry.getFormattedEffectiveAmount(context, volumeUnit)
+                val containerVolumeText = VolumeUnitConverter.format(context, entry.containerVolume, volumeUnit)
 
                 Text(
-                    text = stringResource(R.string.hc_container_line, entry.containerType, entry.containerVolume.toInt()),
+                    text = stringResource(R.string.hc_container_line, entry.containerType, containerVolumeText),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -246,13 +260,13 @@ private fun HealthConnectDataItem(
                 // Show beverage type and effective amount info
                 if (beverageType.hydrationMultiplier != 1.0) {
                     Text(
-                        text = stringResource(R.string.hc_beverage_detail_eff, stringResource(beverageType.labelResId), rawAmount, effectiveAmount),
+                        text = stringResource(R.string.hc_beverage_detail_eff, stringResource(beverageType.labelResId), rawAmountText, effectiveAmountText),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary
                     )
                 } else {
                     Text(
-                        text = stringResource(R.string.hc_beverage_detail, stringResource(beverageType.labelResId), rawAmount),
+                        text = stringResource(R.string.hc_beverage_detail, stringResource(beverageType.labelResId), effectiveAmountText),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

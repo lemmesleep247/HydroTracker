@@ -10,13 +10,12 @@ import com.cemcakmak.hydrotracker.MainActivity
 import com.cemcakmak.hydrotracker.R
 import com.cemcakmak.hydrotracker.data.repository.UserRepository
 import com.cemcakmak.hydrotracker.data.database.DatabaseInitializer
-import com.cemcakmak.hydrotracker.utils.WaterCalculator
+import com.cemcakmak.hydrotracker.utils.VolumeUnitConverter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
-import java.util.*
 
 /**
  * HydroTracker Progress Widget
@@ -62,13 +61,18 @@ class HydroProgressWidget : AppWidgetProvider() {
                 // Get current progress
                 val progress = waterRepository.getTodayProgress().first()
                 val userProfile = userRepository.userProfile.first()
+                val themePreferences = userRepository.themePreferences.first()
+                val volumeUnit = userProfile?.volumeUnit
+                    ?: com.cemcakmak.hydrotracker.data.models.VolumeUnit.MILLILITRES
 
                 // Create widget layout
                 val views = RemoteViews(context.packageName, R.layout.widget_hydro_progress)
 
                 // Update progress text
-                val currentText = WaterCalculator.formatWaterAmount(progress.currentIntake)
-                val goalText = userProfile?.let { WaterCalculator.formatWaterAmount(it.dailyWaterGoal) } ?: "2700ml"
+                val currentText = VolumeUnitConverter.format(context, progress.currentIntake, volumeUnit)
+                val goalText = userProfile?.let {
+                    VolumeUnitConverter.format(context, it.dailyWaterGoal, volumeUnit)
+                } ?: VolumeUnitConverter.format(context, 2700.0, volumeUnit)
                 val progressText = "$currentText / $goalText"
 
                 views.setTextViewText(R.id.widget_progress_text, progressText)
@@ -81,8 +85,17 @@ class HydroProgressWidget : AppWidgetProvider() {
                 )
 
                 // Update last updated time
-                val timeFormat = android.text.format.DateFormat.getTimeFormat(context)
-                val lastUpdated = context.getString(R.string.widget_updated_at, timeFormat.format(Date()))
+                val lastUpdatedTime = java.time.Instant.ofEpochMilli(System.currentTimeMillis())
+                    .atZone(java.time.ZoneId.systemDefault())
+                    .toLocalTime()
+                val lastUpdated = context.getString(
+                    R.string.widget_updated_at,
+                    com.cemcakmak.hydrotracker.utils.DateTimeFormatters.formatTime(
+                        context,
+                        lastUpdatedTime,
+                        themePreferences.timeFormat
+                    )
+                )
                 views.setTextViewText(R.id.widget_last_updated, lastUpdated)
 
                 // Set progress bar
@@ -123,9 +136,10 @@ class HydroProgressWidget : AppWidgetProvider() {
         val views = RemoteViews(context.packageName, R.layout.widget_hydro_progress)
         
         // Set default values
+        val defaultUnit = com.cemcakmak.hydrotracker.data.models.VolumeUnit.MILLILITRES
         views.setTextViewText(
             R.id.widget_progress_text,
-            "${WaterCalculator.formatWaterAmount(0.0)} / ${WaterCalculator.formatWaterAmount(2700.0)}"
+            "${VolumeUnitConverter.format(context, 0.0, defaultUnit)} / ${VolumeUnitConverter.format(context, 2700.0, defaultUnit)}"
         )
         views.setTextViewText(
             R.id.widget_progress_percent,

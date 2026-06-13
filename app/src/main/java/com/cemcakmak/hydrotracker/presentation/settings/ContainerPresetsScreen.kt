@@ -18,11 +18,14 @@ import androidx.compose.ui.unit.dp
 import com.cemcakmak.hydrotracker.R
 import com.cemcakmak.hydrotracker.data.database.repository.ContainerPresetRepository
 import com.cemcakmak.hydrotracker.data.models.ContainerPreset
+import com.cemcakmak.hydrotracker.data.models.UserProfile
+import com.cemcakmak.hydrotracker.data.models.VolumeUnit
 import com.cemcakmak.hydrotracker.presentation.common.AddContainerPresetBottomSheet
 import com.cemcakmak.hydrotracker.presentation.common.EditContainerPresetBottomSheet
 import com.cemcakmak.hydrotracker.presentation.common.ReorderableGroupedColumn
 import com.cemcakmak.hydrotracker.presentation.common.showSuccessSnackbar
 import com.cemcakmak.hydrotracker.ui.theme.HydroTrackerTheme
+import androidx.compose.ui.platform.LocalContext
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 
@@ -31,9 +34,12 @@ import kotlinx.coroutines.launch
 fun ContainerPresetsScreen(
     containerPresetRepository: ContainerPresetRepository? = null,
     snackbarHostState: SnackbarHostState? = null,
+    userProfile: UserProfile? = null,
     onNavigateBack: () -> Unit = {},
     paddingValues: PaddingValues = PaddingValues()
 ) {
+    val context = LocalContext.current
+    val volumeUnit = userProfile?.volumeUnit ?: VolumeUnit.MILLILITRES
     val haptics = LocalHapticFeedback.current
     val coroutineScope = rememberCoroutineScope()
 
@@ -99,7 +105,7 @@ fun ContainerPresetsScreen(
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = preset.getFormattedVolume(),
+                    text = preset.getFormattedVolume(context, volumeUnit),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -109,6 +115,7 @@ fun ContainerPresetsScreen(
 
     if (showAddSheet) {
         AddContainerPresetBottomSheet(
+            volumeUnit = volumeUnit,
             onDismiss = { showAddSheet = false },
             onAdd = { name, volume ->
                 showAddSheet = false
@@ -126,6 +133,7 @@ fun ContainerPresetsScreen(
         presetToEdit?.let { target ->
             EditContainerPresetBottomSheet(
                 preset = target,
+                volumeUnit = volumeUnit,
                 onDismiss = {
                     showEditSheet = false
                     presetToEdit = null

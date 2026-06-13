@@ -37,14 +37,18 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.cemcakmak.hydrotracker.R
 import com.cemcakmak.hydrotracker.data.models.*
+import com.cemcakmak.hydrotracker.utils.DateTimeFormatters
 import com.cemcakmak.hydrotracker.utils.WaterCalculator
+import androidx.compose.ui.platform.LocalContext
 
 @Composable
 fun GoalStep(
     userProfile: UserProfile,
+    themePreferences: ThemePreferences,
     title: String,
     description: String
 ) {
+    val context = LocalContext.current
     OnboardingStepLayout(
         title = title,
         description = description
@@ -60,7 +64,7 @@ fun GoalStep(
             GoalInfoCard(
                 icon = Icons.Rounded.WaterDrop,
                 title = stringResource(R.string.goal_daily_water_goal),
-                value = WaterCalculator.formatWaterAmount(userProfile.dailyWaterGoal),
+                value = WaterCalculator.formatWaterAmount(context, userProfile.dailyWaterGoal, userProfile.volumeUnit),
                 accent = MaterialTheme.colorScheme.primary,
                 container = MaterialTheme.colorScheme.surface,
                 iconContainer = MaterialTheme.colorScheme.primaryContainer
@@ -109,7 +113,7 @@ fun GoalStep(
                         lineHeight = MaterialTheme.typography.bodyMedium.lineHeight
                     )
                     Spacer(Modifier.height(12.dp))
-                    ReasonChipsRow(userProfile = userProfile)
+                    ReasonChipsRow(userProfile = userProfile, themePreferences = themePreferences)
                 }
             }
         }
@@ -137,7 +141,11 @@ private fun ExpressiveHeaderStrip() {
 }
 
 @Composable
-private fun ReasonChipsRow(userProfile: UserProfile) {
+private fun ReasonChipsRow(
+    userProfile: UserProfile,
+    themePreferences: ThemePreferences
+) {
+    val context = LocalContext.current
     val c = MaterialTheme.colorScheme
     Row(
         modifier = Modifier
@@ -165,7 +173,7 @@ private fun ReasonChipsRow(userProfile: UserProfile) {
         )
         AssistChip(
             onClick = {},
-            label = { Text(stringResource(R.string.goal_chip_wake, userProfile.wakeUpTime)) },
+            label = { Text(stringResource(R.string.goal_chip_wake, DateTimeFormatters.formatTimeString(context, userProfile.wakeUpTime, themePreferences.timeFormat))) },
             colors = AssistChipDefaults.assistChipColors(
                 labelColor = c.onSurfaceVariant,
                 containerColor = c.surface
@@ -174,7 +182,7 @@ private fun ReasonChipsRow(userProfile: UserProfile) {
         )
         AssistChip(
             onClick = {},
-            label = { Text(stringResource(R.string.goal_chip_sleep, userProfile.sleepTime)) },
+            label = { Text(stringResource(R.string.goal_chip_sleep, DateTimeFormatters.formatTimeString(context, userProfile.sleepTime, themePreferences.timeFormat))) },
             colors = AssistChipDefaults.assistChipColors(
                 labelColor = c.onSurfaceVariant,
                 containerColor = c.surface
@@ -331,8 +339,9 @@ fun CompleteStep(
                     color = MaterialTheme.colorScheme.onPrimaryContainer
                 )
                 Spacer(Modifier.height(6.dp))
+                val context = LocalContext.current
                 Text(
-                    text = WaterCalculator.formatWaterAmount(userProfile.dailyWaterGoal),
+                    text = WaterCalculator.formatWaterAmount(context, userProfile.dailyWaterGoal, userProfile.volumeUnit),
                     style = MaterialTheme.typography.displayMedium,
                     fontWeight = FontWeight.ExtraBold,
                     color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -416,6 +425,7 @@ fun GoalStepPreview() {
     )
     GoalStep(
         userProfile = userProfile,
+        themePreferences = ThemePreferences(),
         title = "Your Personalized Goal",
         description = "Based on your info, here’s your recommended daily water intake."
     )

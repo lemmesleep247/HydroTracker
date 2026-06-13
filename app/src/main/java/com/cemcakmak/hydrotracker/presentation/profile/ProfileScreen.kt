@@ -36,6 +36,7 @@ import com.cemcakmak.hydrotracker.data.models.ActivityLevel
 import com.cemcakmak.hydrotracker.data.models.AgeGroup
 import com.cemcakmak.hydrotracker.data.models.Gender
 import com.cemcakmak.hydrotracker.data.models.ReminderStyle
+import com.cemcakmak.hydrotracker.data.models.ThemePreferences
 import com.cemcakmak.hydrotracker.presentation.common.showSuccessSnackbar
 import com.cemcakmak.hydrotracker.utils.ImageUtils
 import com.cemcakmak.hydrotracker.notifications.HydroNotificationScheduler
@@ -48,6 +49,7 @@ import java.io.File
 @Composable
 fun ProfileScreen(
     userProfile: UserProfile,
+    themePreferences: ThemePreferences,
     userRepository: UserRepository,
     waterIntakeRepository: WaterIntakeRepository,
     paddingValues: PaddingValues,
@@ -135,6 +137,7 @@ fun ProfileScreen(
             // Active Schedule Section
             ActiveScheduleCard(
                 userProfile = userProfile,
+                themePreferences = themePreferences,
                 onEditSchedule = { showScheduleBottomSheet = true }
             )
 
@@ -145,6 +148,7 @@ fun ProfileScreen(
     GoalEditBottomSheet(
         showBottomSheet = showGoalBottomSheet,
         currentGoal = userProfile.dailyWaterGoal,
+        userProfile = userProfile,
         onDismiss = { showGoalBottomSheet = false },
         onConfirm = { newGoal ->
             updateUserProfile(userProfile.copy(dailyWaterGoal = newGoal))
@@ -199,7 +203,8 @@ fun ProfileScreen(
                 )
             )
             showScheduleBottomSheet = false
-        }
+        },
+        themePreferences = themePreferences
     )
 
     GenderEditBottomSheet(
@@ -343,6 +348,7 @@ fun ProfileScreenPreview() {
     )
     ProfileScreen(
         userProfile = userProfile,
+        themePreferences = ThemePreferences(),
         userRepository = userRepository,
         waterIntakeRepository = waterIntakeRepository,
         paddingValues = PaddingValues(),

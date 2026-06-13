@@ -7,14 +7,16 @@ import android.content.Intent
 import android.content.SharedPreferences
 import android.os.Build
 import android.util.Log
+import androidx.core.content.edit
+import com.cemcakmak.hydrotracker.data.models.DateFormatPattern
+import com.cemcakmak.hydrotracker.data.models.TimeFormat
 import com.cemcakmak.hydrotracker.data.models.UserProfile
 import com.cemcakmak.hydrotracker.data.repository.UserRepository
+import com.cemcakmak.hydrotracker.utils.DateTimeFormatters
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.*
@@ -223,31 +225,20 @@ object HydroNotificationScheduler {
                 }
             }
 
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                alarmManager.setExactAndAllowWhileIdle(
-                    AlarmManager.RTC_WAKEUP,
-                    triggerTime.timeInMillis,
-                    pendingIntent
-                )
-                Log.d(TAG, "Scheduled exact alarm (allow while idle) for: ${triggerTime.time}")
-            } else {
-                alarmManager.setExact(
-                    AlarmManager.RTC_WAKEUP,
-                    triggerTime.timeInMillis,
-                    pendingIntent
-                )
-                Log.d(TAG, "Scheduled exact alarm for: ${triggerTime.time}")
-            }
+            alarmManager.setExactAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                triggerTime.timeInMillis,
+                pendingIntent
+            )
+            Log.d(TAG, "Scheduled exact alarm (allow while idle) for: ${triggerTime.time}")
 
             // Store the scheduled time for UI display
             storeScheduledTime(context, triggerTime.timeInMillis)
 
             // Verify the alarm was scheduled by checking next alarm clock info
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                val nextAlarm = alarmManager.nextAlarmClock
-                if (nextAlarm != null) {
-                    Log.d(TAG, "Next system alarm: ${Date(nextAlarm.triggerTime)}")
-                }
+            val nextAlarm = alarmManager.nextAlarmClock
+            if (nextAlarm != null) {
+                Log.d(TAG, "Next system alarm: ${Date(nextAlarm.triggerTime)}")
             }
 
         } catch (e: SecurityException) {
@@ -261,10 +252,10 @@ object HydroNotificationScheduler {
      * Store the scheduled notification time for UI display
      */
     private fun storeScheduledTime(context: Context, timeMillis: Long) {
-        getPreferences(context).edit()
-            .putLong(KEY_NEXT_REMINDER_TIME, timeMillis)
-            .putLong(KEY_LAST_SCHEDULED_TIME, System.currentTimeMillis())
-            .apply()
+        getPreferences(context).edit {
+            putLong(KEY_NEXT_REMINDER_TIME, timeMillis)
+            putLong(KEY_LAST_SCHEDULED_TIME, System.currentTimeMillis())
+        }
         Log.d(TAG, "Stored scheduled time: ${Date(timeMillis)}")
     }
 
@@ -272,10 +263,10 @@ object HydroNotificationScheduler {
      * Clear stored notification time
      */
     private fun clearScheduledTime(context: Context) {
-        getPreferences(context).edit()
-            .remove(KEY_NEXT_REMINDER_TIME)
-            .remove(KEY_LAST_SCHEDULED_TIME)
-            .apply()
+        getPreferences(context).edit {
+            remove(KEY_NEXT_REMINDER_TIME)
+            remove(KEY_LAST_SCHEDULED_TIME)
+        }
         Log.d(TAG, "Cleared stored scheduled time")
     }
 
@@ -323,7 +314,7 @@ object HydroNotificationScheduler {
     private fun parseTime(timeString: String): LocalTime? {
         return try {
             LocalTime.parse(timeString, DateTimeFormatter.ofPattern("HH:mm"))
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }
@@ -338,9 +329,15 @@ object HydroNotificationScheduler {
 
     /**
      * Get next scheduled notification time for UI display
-     * Returns actual scheduled time from AlarmManager if available
+     * Returns actual scheduled time from AlarmManager if available, formatted using the user's
+     * [timeFormat] and [dateFormat] preferences.
      */
-    fun getNextScheduledTime(context: Context, userProfile: UserProfile): String? {
+    fun getNextScheduledTime(
+        context: Context,
+        userProfile: UserProfile,
+        timeFormat: TimeFormat = TimeFormat.SYSTEM,
+        dateFormat: DateFormatPattern = DateFormatPattern.SYSTEM
+    ): String? {
         // First try to get the actual scheduled time with validation
         val prefs = getPreferences(context)
         val scheduledTime = prefs.getLong(KEY_NEXT_REMINDER_TIME, 0L)
@@ -350,12 +347,16 @@ object HydroNotificationScheduler {
         val now = System.currentTimeMillis()
         val validationResult = validateScheduledTime(scheduledTime, lastScheduled, now)
 
+        val epochToFormatted: (Long) -> String = { epochMillis ->
+            val localDateTime = java.time.Instant.ofEpochMilli(epochMillis)
+                .atZone(java.time.ZoneId.systemDefault())
+                .toLocalDateTime()
+            DateTimeFormatters.formatDateTime(context, localDateTime, timeFormat, dateFormat)
+        }
+
         if (validationResult.isValid) {
             Log.d(TAG, "Using valid scheduled time: ${Date(scheduledTime)}")
-            val is24Hour = android.text.format.DateFormat.is24HourFormat(context)
-            val pattern = if (is24Hour) "MMM dd, HH:mm" else "MMM dd, h:mm a"
-            val formatter = SimpleDateFormat(pattern, Locale.getDefault())
-            return formatter.format(Date(scheduledTime))
+            return epochToFormatted(scheduledTime)
         } else {
             // Clear invalid cached data
             Log.w(TAG, "Invalid scheduled time detected: ${validationResult.reason}. Clearing cache.")
@@ -364,12 +365,7 @@ object HydroNotificationScheduler {
             // Fallback to calculated time
             Log.d(TAG, "Calculating fresh next reminder time")
             val nextTime = calculateNextReminderTime(userProfile)
-            return nextTime?.let {
-                val is24Hour = android.text.format.DateFormat.is24HourFormat(context)
-                val pattern = if (is24Hour) "MMM dd, HH:mm" else "MMM dd, h:mm a"
-                val formatter = SimpleDateFormat(pattern, Locale.getDefault())
-                formatter.format(it.time)
-            }
+            return nextTime?.let { epochToFormatted(it.timeInMillis) }
         }
     }
 
@@ -446,38 +442,37 @@ object HydroNotificationScheduler {
             if (!hasPermission || !hasExactAlarm) {
                 Log.w(TAG, "Notification permissions missing, clearing cache")
                 clearScheduledTime(context)
-                return false
-            }
+                false
+            } else {
+                // Validate cached scheduled time
+                val prefs = getPreferences(context)
+                val scheduledTime = prefs.getLong(KEY_NEXT_REMINDER_TIME, 0L)
+                val lastScheduled = prefs.getLong(KEY_LAST_SCHEDULED_TIME, 0L)
+                val now = System.currentTimeMillis()
 
-            // Validate cached scheduled time
-            val prefs = getPreferences(context)
-            val scheduledTime = prefs.getLong(KEY_NEXT_REMINDER_TIME, 0L)
-            val lastScheduled = prefs.getLong(KEY_LAST_SCHEDULED_TIME, 0L)
-            val now = System.currentTimeMillis()
+                val validationResult = validateScheduledTime(scheduledTime, lastScheduled, now)
 
-            val validationResult = validateScheduledTime(scheduledTime, lastScheduled, now)
+                if (!validationResult.isValid) {
+                    Log.w(TAG, "Invalid notification state detected: ${validationResult.reason}")
+                    clearScheduledTime(context)
 
-            if (!validationResult.isValid) {
-                Log.w(TAG, "Invalid notification state detected: ${validationResult.reason}")
-                clearScheduledTime(context)
+                    // Reschedule if user has completed onboarding
+                    if (userProfile.isOnboardingCompleted) {
+                        Log.i(TAG, "Rescheduling notifications with fresh data")
+                        startNotifications(context, userProfile)
+                    }
 
-                // Reschedule if user has completed onboarding
-                if (userProfile.isOnboardingCompleted) {
-                    Log.i(TAG, "Rescheduling notifications with fresh data")
-                    startNotifications(context, userProfile)
+                    true // Successfully repaired
+                } else {
+                    Log.d(TAG, "Notification system state is valid")
+                    true
                 }
-
-                return true // Successfully repaired
             }
-
-            Log.d(TAG, "Notification system state is valid")
-            return true
-
         } catch (e: Exception) {
             Log.e(TAG, "Error validating notification state", e)
             // Clear everything on error to prevent further issues
             clearScheduledTime(context)
-            return false
+            false
         }
     }
 

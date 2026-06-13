@@ -46,6 +46,7 @@ import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -66,6 +67,8 @@ import com.cemcakmak.hydrotracker.data.models.UserProfile
 import com.cemcakmak.hydrotracker.presentation.common.BlurMorph
 import com.cemcakmak.hydrotracker.presentation.common.rememberAnimatedDouble
 import com.cemcakmak.hydrotracker.ui.theme.HydroTrackerTheme
+import com.cemcakmak.hydrotracker.utils.DateTimeFormatters
+import com.cemcakmak.hydrotracker.utils.VolumeUnitConverter
 import com.cemcakmak.hydrotracker.utils.WaterCalculator
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
@@ -83,7 +86,7 @@ fun ReminderIntervalScreen(
         onNavigateBack = onNavigateBack
     ) {
         if (userProfile != null) {
-            val previewText = buildPreviewText(userProfile)
+            val previewText = buildPreviewText(userProfile, themePreferences)
 
             // Preview card
             ReminderSchedulePreviewCard(
@@ -492,7 +495,8 @@ private fun CustomIntervalPicker(
 }
 
 @Composable
-private fun buildPreviewText(userProfile: UserProfile): String {
+private fun buildPreviewText(userProfile: UserProfile, themePreferences: ThemePreferences): String {
+    val context = LocalContext.current
     return when (userProfile.reminderIntervalMode) {
         ReminderIntervalMode.AUTOMATIC -> {
             val awakeHours = WaterCalculator.calculateAwakeHours(
@@ -502,7 +506,7 @@ private fun buildPreviewText(userProfile: UserProfile): String {
             val glasses = (userProfile.dailyWaterGoal / 300.0).toInt()
             stringResource(
                 R.string.reminder_preview_auto,
-                WaterCalculator.formatWaterAmount(userProfile.dailyWaterGoal),
+                VolumeUnitConverter.format(context, userProfile.dailyWaterGoal, userProfile.volumeUnit),
                 glasses,
                 awakeHours.toInt(),
                 userProfile.reminderInterval
@@ -511,8 +515,8 @@ private fun buildPreviewText(userProfile: UserProfile): String {
         ReminderIntervalMode.CUSTOM -> stringResource(
             R.string.reminder_preview_custom,
             formatInterval(userProfile.customReminderInterval),
-            userProfile.wakeUpTime,
-            userProfile.sleepTime
+            DateTimeFormatters.formatTimeString(context, userProfile.wakeUpTime, themePreferences.timeFormat),
+            DateTimeFormatters.formatTimeString(context, userProfile.sleepTime, themePreferences.timeFormat)
         )
     }
 }

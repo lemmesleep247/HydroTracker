@@ -1,12 +1,14 @@
 package com.cemcakmak.hydrotracker.data.database.entities
 
+import android.content.Context
 import androidx.room.*
 import com.cemcakmak.hydrotracker.data.models.BeverageType
-import java.text.NumberFormat
+import com.cemcakmak.hydrotracker.data.models.TimeFormat
+import com.cemcakmak.hydrotracker.data.models.VolumeUnit
+import com.cemcakmak.hydrotracker.utils.DateTimeFormatters
+import com.cemcakmak.hydrotracker.utils.VolumeUnitConverter
 import java.time.Instant
 import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.time.format.FormatStyle
 import java.util.Locale
 
 @Entity(
@@ -56,42 +58,21 @@ data class WaterIntakeEntry(
     val beverageMultiplier: Double? = null
 ) {
     /**
-     * Returns a formatted time string according to system locale and timezone preferences
+     * Returns a formatted time string according to the user's [timeFormat] preference.
+     * Internal storage continues to use epoch milliseconds; this only affects display.
      */
-    fun getFormattedTime(): String {
+    fun getFormattedTime(context: Context, timeFormat: TimeFormat): String {
         val instant = Instant.ofEpochMilli(timestamp)
-        val localDateTime = instant.atZone(ZoneId.systemDefault())
-
-        // Use system locale and preferences for 12/24-hour format
-        val formatter = DateTimeFormatter.ofLocalizedTime(FormatStyle.SHORT)
-            .withLocale(Locale.getDefault())
-
-        return formatter.format(localDateTime)
+        val localDateTime = instant.atZone(ZoneId.systemDefault()).toLocalDateTime()
+        return DateTimeFormatters.formatTime(context, localDateTime.toLocalTime(), timeFormat)
     }
 
     /**
-     * Returns a formatted date and time string according to system locale and timezone preferences
+     * Returns the intake amount formatted in the user's preferred [volumeUnit].
+     * Internal storage continues to use millilitres.
      */
-    fun getFormattedDateTime(): String {
-        val instant = Instant.ofEpochMilli(timestamp)
-        val localDateTime = instant.atZone(ZoneId.systemDefault())
-
-        // Use system locale and preferences for date and time format
-        val formatter = DateTimeFormatter.ofLocalizedDateTime(FormatStyle.SHORT, FormatStyle.SHORT)
-            .withLocale(Locale.getDefault())
-
-        return formatter.format(localDateTime)
-    }
-
-    fun getFormattedAmount(): String {
-        return if (amount >= 1000) {
-            val liters = amount / 1000
-            val formatter = NumberFormat.getNumberInstance(Locale.getDefault())
-            formatter.maximumFractionDigits = 1
-            "${formatter.format(liters)} L"
-        } else {
-            "${amount.toInt()} ml"
-        }
+    fun getFormattedAmount(context: Context, volumeUnit: VolumeUnit): String {
+        return VolumeUnitConverter.format(context, amount, volumeUnit)
     }
 
     /**
@@ -109,14 +90,6 @@ data class WaterIntakeEntry(
     }
 
     /**
-     * Display name for this entry's beverage. For presets this is the enum's display name;
-     * for custom beverages [beverageType] stores the custom name directly.
-     */
-    fun getBeverageDisplayName(): String {
-        return BeverageType.entries.find { it.name == beverageType }?.displayName ?: beverageType
-    }
-
-    /**
      * Get the effective hydration amount considering beverage type multiplier.
      * Custom beverages store their multiplier on the entry; presets/legacy rows use the enum.
      */
@@ -125,18 +98,11 @@ data class WaterIntakeEntry(
     }
 
     /**
-     * Get formatted effective hydration amount
+     * Get formatted effective hydration amount in the user's preferred [volumeUnit].
+     * Internal storage continues to use millilitres.
      */
-    fun getFormattedEffectiveAmount(): String {
-        val effectiveAmount = getEffectiveHydrationAmount()
-        return if (effectiveAmount >= 1000) {
-            val liters = effectiveAmount / 1000
-            val formatter = NumberFormat.getNumberInstance(Locale.getDefault())
-            formatter.maximumFractionDigits = 1
-            "${formatter.format(liters)} L"
-        } else {
-            "${effectiveAmount.toInt()} ml"
-        }
+    fun getFormattedEffectiveAmount(context: Context, volumeUnit: VolumeUnit): String {
+        return VolumeUnitConverter.format(context, getEffectiveHydrationAmount(), volumeUnit)
     }
 
     companion object {

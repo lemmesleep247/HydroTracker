@@ -1,10 +1,12 @@
 package com.cemcakmak.hydrotracker.utils
 
+import android.content.Context
 import android.util.Log
 import com.cemcakmak.hydrotracker.data.models.ActivityLevel
 import com.cemcakmak.hydrotracker.data.models.Gender
 import com.cemcakmak.hydrotracker.data.models.HydrationStandard
 import com.cemcakmak.hydrotracker.data.models.ReminderIntervalMode
+import com.cemcakmak.hydrotracker.data.models.VolumeUnit
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import kotlin.math.max
@@ -137,23 +139,14 @@ object WaterCalculator {
     }
 
     /**
-     * Formats water amount for display
+     * Formats water amount for display in the user's preferred [volumeUnit].
      *
-     * @param amountMl Amount in milliliters
-     * @return Formatted string (e.g., "2.5 L" or "750 ml")
+     * @param context Context for resolving unit labels.
+     * @param amountMl Amount in milliliters.
+     * @param volumeUnit The user's preferred display unit.
+     * @return Formatted string (e.g., "750 ml" or "25.4 fl oz").
      */
-    fun formatWaterAmount(amountMl: Double): String {
-        return when {
-            amountMl >= 1000 -> "${(amountMl / 1000).format(1)} L"
-            else -> "${amountMl.toInt()} ml"
-        }
-    }
-
-
-    /**
-     * Extension function to format Double with specified decimal places
-     */
-    private fun Double.format(decimals: Int): String {
-        return "%.${decimals}f".format(this)
+    fun formatWaterAmount(context: Context, amountMl: Double, volumeUnit: VolumeUnit): String {
+        return VolumeUnitConverter.format(context, amountMl, volumeUnit)
     }
 }

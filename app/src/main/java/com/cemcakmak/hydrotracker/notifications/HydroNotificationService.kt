@@ -14,6 +14,7 @@ import com.cemcakmak.hydrotracker.MainActivity
 import com.cemcakmak.hydrotracker.R
 import com.cemcakmak.hydrotracker.data.models.UserProfile
 import com.cemcakmak.hydrotracker.data.database.repository.WaterProgress
+import com.cemcakmak.hydrotracker.utils.VolumeUnitConverter
 
 /**
  * Service for creating and managing hydration reminder notifications
@@ -65,12 +66,12 @@ class HydroNotificationService(private val context: Context) {
         val content = NotificationContentProvider.getNotificationContent(
             context = context,
             reminderStyle = userProfile.reminderStyle,
-            userName = null, // Can be added to UserProfile if needed
             currentProgress = waterProgress.progress,
-            dailyGoal = userProfile.dailyWaterGoal
+            dailyGoal = userProfile.dailyWaterGoal,
+            volumeUnit = userProfile.volumeUnit
         )
 
-        val notification = buildNotification(content, waterProgress)
+        val notification = buildNotification(content, waterProgress, userProfile)
 
         try {
             notificationManager.notify(NOTIFICATION_ID, notification)
@@ -93,12 +94,12 @@ class HydroNotificationService(private val context: Context) {
         val content = NotificationContentProvider.getNotificationContent(
             context = context,
             reminderStyle = userProfile.reminderStyle,
-            userName = null,
             currentProgress = waterProgress.progress,
-            dailyGoal = userProfile.dailyWaterGoal
+            dailyGoal = userProfile.dailyWaterGoal,
+            volumeUnit = userProfile.volumeUnit
         )
 
-        val notification = buildNotification(content, waterProgress)
+        val notification = buildNotification(content, waterProgress, userProfile)
 
         try {
             notificationManager.notify(NOTIFICATION_ID, notification)
@@ -112,7 +113,8 @@ class HydroNotificationService(private val context: Context) {
      */
     private fun buildNotification(
         content: NotificationContent,
-        waterProgress: WaterProgress
+        waterProgress: WaterProgress,
+        userProfile: UserProfile
     ): android.app.Notification {
         // Create intent to open app when notification is tapped
         val intent = Intent(context, MainActivity::class.java).apply {
@@ -144,7 +146,10 @@ class HydroNotificationService(private val context: Context) {
                 (content.progress * 100).toInt(),
                 false
             )
-            .setSubText("${waterProgress.getFormattedCurrent()} / ${waterProgress.getFormattedGoal()}")
+            .setSubText(
+                "${VolumeUnitConverter.format(context, waterProgress.currentIntake, userProfile.volumeUnit)} / " +
+                VolumeUnitConverter.format(context, waterProgress.dailyGoal, userProfile.volumeUnit)
+            )
             .setColorized(true)
             .setColor(0xFF0077BE.toInt()) // HydroTracker primary colour
             .build()
@@ -155,12 +160,5 @@ class HydroNotificationService(private val context: Context) {
      */
     fun cancelAllNotifications() {
         notificationManager.cancelAll()
-    }
-
-    /**
-     * Cancel specific notification
-     */
-    fun cancelNotification() {
-        notificationManager.cancel(NOTIFICATION_ID)
     }
 }

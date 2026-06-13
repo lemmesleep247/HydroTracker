@@ -23,11 +23,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.cemcakmak.hydrotracker.R
 import com.cemcakmak.hydrotracker.utils.ImageUtils
+import com.cemcakmak.hydrotracker.utils.DateTimeFormatters
+import com.cemcakmak.hydrotracker.utils.WaterCalculator
 import java.io.File
 import java.time.LocalTime
 import com.cemcakmak.hydrotracker.data.models.UserProfile
+import com.cemcakmak.hydrotracker.data.models.ThemePreferences
 import com.cemcakmak.hydrotracker.data.database.repository.TodayStatistics
-import com.cemcakmak.hydrotracker.utils.WaterCalculator
 
 /**
  * Profile Header Card with user avatar and quick stats
@@ -318,6 +320,7 @@ fun DailyGoalsCard(
     onEditGoal: () -> Unit,
     onEditActivity: () -> Unit
 ) {
+    val context = LocalContext.current
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -348,7 +351,7 @@ fun DailyGoalsCard(
                 EditableInfoRow(
                     icon = Icons.Default.WaterDrop,
                     label = stringResource(R.string.profile_label_daily_goal),
-                    value = WaterCalculator.formatWaterAmount(userProfile.dailyWaterGoal),
+                    value = WaterCalculator.formatWaterAmount(context, userProfile.dailyWaterGoal, userProfile.volumeUnit),
                     onClick = {haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
                         onEditGoal() }
                 )
@@ -377,8 +380,10 @@ fun DailyGoalsCard(
 @Composable
 fun ActiveScheduleCard(
     userProfile: UserProfile,
+    themePreferences: ThemePreferences,
     onEditSchedule: () -> Unit
 ) {
+    val context = LocalContext.current
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -411,8 +416,8 @@ fun ActiveScheduleCard(
                     label = stringResource(R.string.profile_label_active_hours),
                     value = stringResource(
                         R.string.profile_active_hours_format,
-                        userProfile.wakeUpTime,
-                        userProfile.sleepTime
+                        DateTimeFormatters.formatTimeString(context, userProfile.wakeUpTime, themePreferences.timeFormat),
+                        DateTimeFormatters.formatTimeString(context, userProfile.sleepTime, themePreferences.timeFormat)
                     ),
                     onClick = {haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
                         onEditSchedule() }

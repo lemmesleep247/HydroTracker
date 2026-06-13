@@ -78,7 +78,9 @@ import com.cemcakmak.hydrotracker.notifications.HydroNotificationScheduler
 import com.cemcakmak.hydrotracker.notifications.HydroNotificationService
 import com.cemcakmak.hydrotracker.notifications.NotificationPermissionManager
 import com.cemcakmak.hydrotracker.ui.theme.HydroTrackerTheme
+import com.cemcakmak.hydrotracker.utils.DateTimeFormatters
 import com.cemcakmak.hydrotracker.utils.SmartHaptics
+import com.cemcakmak.hydrotracker.utils.VolumeUnitConverter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -504,7 +506,9 @@ fun DeveloperOptionsScreen(
                         lines = listOf(
                             "Onboarding completed" to onboardingCompleted.toString(),
                             "User profile exists" to (userProfile != null).toString(),
-                            "Daily goal" to (userProfile?.let { "${it.dailyWaterGoal.toInt()} ml" } ?: "—")
+                            "Daily goal" to (userProfile?.let {
+                                VolumeUnitConverter.format(context, it.dailyWaterGoal, it.volumeUnit)
+                            } ?: "—")
                         )
                     )
                     if (userProfile != null) {
@@ -521,7 +525,7 @@ fun DeveloperOptionsScreen(
                                 "Should enable" to shouldEnable,
                                 "Reminder interval" to "${userProfile.reminderInterval} min",
                                 "Reminder style" to userProfile.reminderStyle.getDisplayName(),
-                                "Active hours" to "${userProfile.wakeUpTime} – ${userProfile.sleepTime}"
+                                "Active hours" to "${DateTimeFormatters.formatTimeString(context, userProfile.wakeUpTime, themePreferences.timeFormat)} – ${DateTimeFormatters.formatTimeString(context, userProfile.sleepTime, themePreferences.timeFormat)}"
                             )
                         )
                     }
@@ -625,7 +629,7 @@ private fun DeviceInfoSection(
     val context = LocalContext.current
 
     // Which tier SmartHaptics will actually route to on this device — straight from the engine,
-    // so the readout always matches real behavior. Uses a representative token (Confirm).
+    // so the readout always matches real behaviour. Uses a representative token (Confirm).
     val resolvedTier = remember { SmartHaptics.resolveTierLabel(context) }
 
     Surface(

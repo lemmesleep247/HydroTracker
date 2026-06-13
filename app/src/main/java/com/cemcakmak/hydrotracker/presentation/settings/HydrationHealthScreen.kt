@@ -39,6 +39,7 @@ import com.cemcakmak.hydrotracker.data.models.AgeGroup
 import com.cemcakmak.hydrotracker.data.models.Gender
 import com.cemcakmak.hydrotracker.data.models.BeverageType
 import com.cemcakmak.hydrotracker.data.models.HydrationStandard
+import com.cemcakmak.hydrotracker.data.models.ThemePreferences
 import com.cemcakmak.hydrotracker.data.models.UserProfile
 import com.cemcakmak.hydrotracker.data.repository.UserRepository
 import com.cemcakmak.hydrotracker.health.HealthConnectManager
@@ -46,6 +47,8 @@ import com.cemcakmak.hydrotracker.health.HealthConnectSyncManager
 import com.cemcakmak.hydrotracker.presentation.common.BlurMorph
 import com.cemcakmak.hydrotracker.presentation.common.rememberAnimatedDouble
 import com.cemcakmak.hydrotracker.ui.theme.HydroTrackerTheme
+import com.cemcakmak.hydrotracker.utils.DateTimeFormatters
+import com.cemcakmak.hydrotracker.utils.VolumeUnitConverter
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
 
@@ -57,6 +60,7 @@ fun HydrationHealthScreen(
     waterIntakeRepository: WaterIntakeRepository? = null,
     snackbarHostState: SnackbarHostState? = null,
     healthConnectPermissionLauncher: ActivityResultLauncher<Set<String>>? = null,
+    themePreferences: ThemePreferences = ThemePreferences(),
     onHydrationStandardChange: (HydrationStandard) -> Unit = {},
     onHealthConnectSyncChange: (Boolean) -> Unit = {},
     onNavigateBack: () -> Unit = {}
@@ -77,6 +81,7 @@ fun HydrationHealthScreen(
                 userRepository = userRepository,
                 waterIntakeRepository = waterIntakeRepository,
                 snackbarHostState = snackbarHostState,
+                themePreferences = themePreferences,
                 onHealthConnectSyncChange = onHealthConnectSyncChange
             )
         }
@@ -173,11 +178,13 @@ private fun CalculationStandardSection(
                         ) {
                             HydrationStatChip(
                                 label = stringResource(R.string.gender_male),
-                                value = profile.hydrationStandard.getMaleIntake().toInt() / 1000.0
+                                value = profile.hydrationStandard.getMaleIntake().toInt() / 1000.0,
+                                volumeUnit = profile.volumeUnit
                             )
                             HydrationStatChip(
                                 label = stringResource(R.string.gender_female),
-                                value = profile.hydrationStandard.getFemaleIntake().toInt() / 1000.0
+                                value = profile.hydrationStandard.getFemaleIntake().toInt() / 1000.0,
+                                volumeUnit = profile.volumeUnit
                             )
                         }
                     }
@@ -232,7 +239,12 @@ private fun CalculationStandardSection(
 }
 
 @Composable
-private fun HydrationStatChip(label: String, value: Double) {
+private fun HydrationStatChip(
+    label: String,
+    value: Double,
+    volumeUnit: com.cemcakmak.hydrotracker.data.models.VolumeUnit
+) {
+    val context = LocalContext.current
     val animatedValue = rememberAnimatedDouble(targetValue = value)
 
     Column(
@@ -240,7 +252,7 @@ private fun HydrationStatChip(label: String, value: Double) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(
-            text = stringResource(R.string.unit_liters_format, "%.1f".format(animatedValue)),
+            text = VolumeUnitConverter.format(context, animatedValue * 1000.0, volumeUnit),
             style = MaterialTheme.typography.headlineMediumEmphasized,
             color = MaterialTheme.colorScheme.tertiary,
             maxLines = 1
@@ -261,6 +273,7 @@ private fun HealthConnectSection(
     userRepository: UserRepository?,
     waterIntakeRepository: WaterIntakeRepository?,
     snackbarHostState: SnackbarHostState?,
+    themePreferences: ThemePreferences = ThemePreferences(),
     onHealthConnectSyncChange: (Boolean) -> Unit
 ) {
     val context = LocalContext.current
@@ -474,7 +487,9 @@ private fun HealthConnectSection(
     if (showHistorySheet) {
         HealthConnectHistorySheet(
             waterIntakeRepository = waterIntakeRepository,
-            onDismiss = { showHistorySheet = false }
+            onDismiss = { showHistorySheet = false },
+            userProfile = userProfile,
+            themePreferences = themePreferences
         )
     }
 
@@ -599,7 +614,9 @@ private fun RestoreHealthConnectDialog(
 @Composable
 private fun HealthConnectHistorySheet(
     waterIntakeRepository: WaterIntakeRepository?,
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    userProfile: UserProfile? = null,
+    themePreferences: ThemePreferences = ThemePreferences()
 ) {
     val sheetState = rememberBottomSheetState(initialValue = SheetValue.Hidden)
     var entries by remember { mutableStateOf<List<WaterIntakeEntry>>(emptyList()) }
@@ -627,7 +644,9 @@ private fun HealthConnectHistorySheet(
             isLoading = isLoading,
             waterIntakeRepository = waterIntakeRepository,
             onEntryChanged = { refreshTrigger++ },
-            modifier = Modifier.fillMaxHeight(0.9f)
+            modifier = Modifier.fillMaxHeight(0.9f),
+            userProfile = userProfile,
+            themePreferences = themePreferences
         )
     }
 }
@@ -638,7 +657,9 @@ private fun HealthConnectHistoryContent(
     entries: List<WaterIntakeEntry>,
     isLoading: Boolean,
     waterIntakeRepository: WaterIntakeRepository? = null,
-    onEntryChanged: () -> Unit = {}
+    onEntryChanged: () -> Unit = {},
+    userProfile: UserProfile? = null,
+    themePreferences: ThemePreferences = ThemePreferences()
 ) {
     Column(
         modifier = modifier
@@ -705,7 +726,9 @@ private fun HealthConnectHistoryContent(
                             index = index,
                             size = sortedEntries.size,
                             waterIntakeRepository = waterIntakeRepository,
-                            onEntryChanged = onEntryChanged
+                            onEntryChanged = onEntryChanged,
+                            userProfile = userProfile,
+                            themePreferences = themePreferences
                         )
                     }
                 }
@@ -720,15 +743,24 @@ private fun HealthConnectHistoryItem(
     index: Int,
     size: Int,
     waterIntakeRepository: WaterIntakeRepository?,
-    onEntryChanged: () -> Unit
+    onEntryChanged: () -> Unit,
+    userProfile: UserProfile? = null,
+    themePreferences: ThemePreferences = ThemePreferences()
 ) {
+    val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val isExternal = entry.isExternalEntry()
     val isHidden = entry.isHidden
-    val formatted = remember(entry.timestamp) {
-        java.time.Instant.ofEpochMilli(entry.timestamp)
-            .atZone(java.time.ZoneId.systemDefault())
-            .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
+    val volumeUnit = userProfile?.volumeUnit ?: com.cemcakmak.hydrotracker.data.models.VolumeUnit.MILLILITRES
+    val formatted = remember(entry.timestamp, themePreferences) {
+        DateTimeFormatters.formatDateTime(
+            context,
+            java.time.Instant.ofEpochMilli(entry.timestamp)
+                .atZone(java.time.ZoneId.systemDefault())
+                .toLocalDateTime(),
+            themePreferences.timeFormat,
+            themePreferences.dateFormat
+        )
     }
 
     val haptics = LocalHapticFeedback.current
@@ -751,10 +783,7 @@ private fun HealthConnectHistoryItem(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Text(
-                            text = stringResource(
-                                R.string.unit_milliliters_format,
-                                entry.getEffectiveHydrationAmount().toInt().toString()
-                            ),
+                            text = entry.getFormattedEffectiveAmount(context, volumeUnit),
                             style = MaterialTheme.typography.titleSmallEmphasized,
                         )
 
@@ -770,7 +799,11 @@ private fun HealthConnectHistoryItem(
                     ) {
                         if (entry.containerType.isNotEmpty()) {
                             Text(
-                                text = stringResource(R.string.hc_amount_line, entry.containerVolume.toInt(), entry.containerType),
+                                text = stringResource(
+                                    R.string.hc_amount_line,
+                                    VolumeUnitConverter.formatValue(entry.containerVolume, volumeUnit),
+                                    entry.containerType
+                                ),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.secondary
                             )
@@ -778,10 +811,10 @@ private fun HealthConnectHistoryItem(
 
                         val beverageType = entry.getBeverageType()
                         val beverageName = stringResource(beverageType.labelResId)
-                        val effectiveAmount = entry.getEffectiveHydrationAmount().toInt()
-                        if (entry.amount.toInt() != effectiveAmount) {
+                        val effectiveAmountFormatted = entry.getFormattedEffectiveAmount(context, volumeUnit)
+                        if (entry.amount.toInt() != entry.getEffectiveHydrationAmount().toInt()) {
                             Text(
-                                text = stringResource(R.string.hc_beverage_eff, beverageName, effectiveAmount),
+                                text = stringResource(R.string.hc_beverage_eff, beverageName, effectiveAmountFormatted),
                                 style = MaterialTheme.typography.bodySmall,
                                 color = MaterialTheme.colorScheme.secondary
                             )
@@ -889,6 +922,7 @@ fun HydrationHealthScreenPreview() {
     HydroTrackerTheme {
         HydrationHealthScreen(
             userProfile = previewProfile,
+            themePreferences = ThemePreferences(),
             onHydrationStandardChange = { previewProfile = previewProfile.copy(hydrationStandard = it) },
             onHealthConnectSyncChange = { previewProfile = previewProfile.copy(healthConnectSyncEnabled = it) }
         )

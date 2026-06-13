@@ -25,6 +25,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -35,11 +36,11 @@ import androidx.annotation.StringRes
 import com.cemcakmak.hydrotracker.R
 import com.cemcakmak.hydrotracker.data.database.repository.WaterIntakeRepository
 import com.cemcakmak.hydrotracker.data.database.entities.DailySummary
+import com.cemcakmak.hydrotracker.data.models.UserProfile
 import com.cemcakmak.hydrotracker.data.models.WeekStartDay
 import com.cemcakmak.hydrotracker.data.models.ThemePreferences
-import com.cemcakmak.hydrotracker.utils.WaterCalculator
-import java.text.SimpleDateFormat
-import java.util.*
+import com.cemcakmak.hydrotracker.utils.DateTimeFormatters
+import com.cemcakmak.hydrotracker.utils.VolumeUnitConverter
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.temporal.WeekFields
@@ -50,8 +51,10 @@ import java.time.temporal.WeekFields
 fun HistoryScreen(
     waterIntakeRepository: WaterIntakeRepository,
     themePreferences: ThemePreferences = ThemePreferences(),
+    userProfile: UserProfile? = null,
     paddingValues: PaddingValues
 ) {
+    val volumeUnit = userProfile?.volumeUnit ?: com.cemcakmak.hydrotracker.data.models.VolumeUnit.MILLILITRES
     // State for different time periods
     var selectedPeriod by remember { mutableStateOf(TimePeriod.WEEKLY) }
     
@@ -77,7 +80,7 @@ fun HistoryScreen(
             item {
                 PeriodSelector(
                     selectedPeriod = selectedPeriod,
-                    onPeriodSelected = { 
+                    onPeriodSelected = {
                         selectedPeriod = it
                         // Reset navigation when switching between periods
                         currentWeekOffset = 0
@@ -90,7 +93,8 @@ fun HistoryScreen(
                     onWeekOffsetChanged = { currentWeekOffset = it },
                     onMonthOffsetChanged = { currentMonthOffset = it },
                     onYearOffsetChanged = { currentYearOffset = it },
-                    weekStartDay = themePreferences.weekStartDay
+                    weekStartDay = themePreferences.weekStartDay,
+                    dateFormat = themePreferences.dateFormat
                 )
             }
 
@@ -102,7 +106,9 @@ fun HistoryScreen(
                             selectedPeriod = selectedPeriod,
                             weekOffset = currentWeekOffset,
                             summaries = allSummaries,
-                            weekStartDay = themePreferences.weekStartDay
+                            weekStartDay = themePreferences.weekStartDay,
+                            volumeUnit = volumeUnit,
+                            dateFormat = themePreferences.dateFormat
                         )
                     }
                     TimePeriod.MONTHLY -> {
@@ -110,14 +116,17 @@ fun HistoryScreen(
                             summaries = allSummaries,
                             selectedPeriod = selectedPeriod,
                             monthOffset = currentMonthOffset,
-                            weekStartDay = themePreferences.weekStartDay
+                            weekStartDay = themePreferences.weekStartDay,
+                            volumeUnit = volumeUnit,
+                            dateFormat = themePreferences.dateFormat
                         )
                     }
                     TimePeriod.YEARLY -> {
                         YearlyChartSection(
                             summaries = allSummaries,
                             selectedPeriod = selectedPeriod,
-                            yearOffset = currentYearOffset
+                            yearOffset = currentYearOffset,
+                            volumeUnit = volumeUnit
                         )
                     }
                 }
@@ -126,7 +135,8 @@ fun HistoryScreen(
             // Statistics Overview
             item {
                 StatisticsGrid(
-                    summaries = allSummaries
+                    summaries = allSummaries,
+                    volumeUnit = volumeUnit
                 )
             }
 
@@ -170,7 +180,8 @@ private fun PeriodSelector(
     onWeekOffsetChanged: (Int) -> Unit,
     onMonthOffsetChanged: (Int) -> Unit,
     onYearOffsetChanged: (Int) -> Unit,
-    weekStartDay: WeekStartDay
+    weekStartDay: WeekStartDay,
+    dateFormat: com.cemcakmak.hydrotracker.data.models.DateFormatPattern
 ) {
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -242,7 +253,14 @@ private fun PeriodSelector(
                 }
                 
                 Text(
-                    text = getCurrentPeriodText(selectedPeriod, currentWeekOffset, currentMonthOffset, currentYearOffset, weekStartDay),
+                    text = getCurrentPeriodText(
+                        selectedPeriod,
+                        currentWeekOffset,
+                        currentMonthOffset,
+                        currentYearOffset,
+                        weekStartDay,
+                        dateFormat
+                    ),
                     style = MaterialTheme.typography.titleMediumEmphasized,
                     color = MaterialTheme.colorScheme.onSurface,
                     textAlign = TextAlign.Center
@@ -283,8 +301,11 @@ private fun WeeklyChartSection(
     selectedPeriod: TimePeriod,
     weekOffset: Int,
     summaries: List<DailySummary> = emptyList(),
-    weekStartDay: WeekStartDay = WeekStartDay.SYSTEM
+    weekStartDay: WeekStartDay = WeekStartDay.SYSTEM,
+    volumeUnit: com.cemcakmak.hydrotracker.data.models.VolumeUnit,
+    dateFormat: com.cemcakmak.hydrotracker.data.models.DateFormatPattern = com.cemcakmak.hydrotracker.data.models.DateFormatPattern.SYSTEM
 ) {
+    val context = LocalContext.current
     var selectedDayData by remember { mutableStateOf<com.cemcakmak.hydrotracker.data.database.dao.DailyTotal?>(null) }
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -297,7 +318,7 @@ private fun WeeklyChartSection(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                text = getCurrentPeriodText(selectedPeriod, weekOffset, 0, 0, weekStartDay),
+                text = getCurrentPeriodText(selectedPeriod, weekOffset, 0, 0, weekStartDay, dateFormat),
                 style = MaterialTheme.typography.titleLargeEmphasized
             )
 
@@ -328,7 +349,8 @@ private fun WeeklyChartSection(
                 WeeklyBarChart(
                     dailyTotals = filteredDailyTotals,
                     onBarClick = { dayTotal -> selectedDayData = dayTotal
-                        haptics.performHapticFeedback(HapticFeedbackType.ContextClick)}
+                        haptics.performHapticFeedback(HapticFeedbackType.ContextClick)},
+                    volumeUnit = volumeUnit
                 )
                 
                 // Inline detail panel with animation
@@ -354,7 +376,9 @@ private fun WeeklyChartSection(
                                 goal = null,
                                 goalPercentage = null
                             ),
-                            onDismiss = { selectedDayData = null }
+                            onDismiss = { selectedDayData = null },
+                            volumeUnit = volumeUnit,
+                            dateFormat = dateFormat
                         )
                     }
                 }
@@ -371,15 +395,15 @@ private fun WeeklyChartSection(
                     
                     WeeklyStatItem(
                         label = stringResource(R.string.history_stat_total),
-                        value = WaterCalculator.formatWaterAmount(totalAmount)
+                        value = VolumeUnitConverter.format(context, totalAmount, volumeUnit)
                     )
                     WeeklyStatItem(
                         label = stringResource(R.string.history_stat_average),
-                        value = WaterCalculator.formatWaterAmount(avgAmount)
+                        value = VolumeUnitConverter.format(context, avgAmount, volumeUnit)
                     )
                     WeeklyStatItem(
                         label = stringResource(R.string.history_stat_best_day),
-                        value = WaterCalculator.formatWaterAmount(bestAmount)
+                        value = VolumeUnitConverter.format(context, bestAmount, volumeUnit)
                     )
                 }
             } else {
@@ -404,8 +428,10 @@ private fun WeeklyChartSection(
 @Composable
 private fun WeeklyBarChart(
     dailyTotals: List<com.cemcakmak.hydrotracker.data.database.dao.DailyTotal>,
-    onBarClick: (com.cemcakmak.hydrotracker.data.database.dao.DailyTotal) -> Unit
+    onBarClick: (com.cemcakmak.hydrotracker.data.database.dao.DailyTotal) -> Unit,
+    volumeUnit: com.cemcakmak.hydrotracker.data.models.VolumeUnit
 ) {
+    val context = LocalContext.current
     if (dailyTotals.isEmpty()) {
         Box(
             modifier = Modifier
@@ -455,7 +481,7 @@ private fun WeeklyBarChart(
                     ) {
                         if (height > 30.dp) {
                             Text(
-                                text = WaterCalculator.formatWaterAmount(dayTotal.totalAmount),
+                                text = VolumeUnitConverter.format(context, dayTotal.totalAmount, volumeUnit),
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.onPrimary,
                                 fontWeight = FontWeight.Bold
@@ -512,8 +538,10 @@ private fun WeeklyStatItem(
 private fun YearlyChartSection(
     summaries: List<DailySummary>,
     selectedPeriod: TimePeriod,
-    yearOffset: Int
+    yearOffset: Int,
+    volumeUnit: com.cemcakmak.hydrotracker.data.models.VolumeUnit
 ) {
+    val context = LocalContext.current
     Card(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
@@ -559,10 +587,7 @@ private fun YearlyChartSection(
                     )
                     WeeklyStatItem(
                         label = stringResource(R.string.history_stat_total_intake),
-                        value = stringResource(
-                            R.string.unit_liters_format,
-                            (totalIntake / 1000).toInt().toString()
-                        )
+                        value = VolumeUnitConverter.format(context, totalIntake, volumeUnit)
                     )
                 }
             } else {
@@ -686,7 +711,9 @@ private fun MonthlyChartSection(
     summaries: List<DailySummary>,
     selectedPeriod: TimePeriod,
     monthOffset: Int,
-    weekStartDay: WeekStartDay = WeekStartDay.SYSTEM
+    weekStartDay: WeekStartDay = WeekStartDay.SYSTEM,
+    volumeUnit: com.cemcakmak.hydrotracker.data.models.VolumeUnit,
+    dateFormat: com.cemcakmak.hydrotracker.data.models.DateFormatPattern = com.cemcakmak.hydrotracker.data.models.DateFormatPattern.SYSTEM
 ) {
     var selectedSummary by remember { mutableStateOf<DailySummary?>(null) }
     Card(
@@ -739,7 +766,9 @@ private fun MonthlyChartSection(
                                 goal = summary.dailyGoal,
                                 goalPercentage = summary.goalPercentage
                             ),
-                            onDismiss = { selectedSummary = null }
+                            onDismiss = { selectedSummary = null },
+                            volumeUnit = volumeUnit,
+                            dateFormat = dateFormat
                         )
                     }
                 }
@@ -983,8 +1012,10 @@ private fun MonthlyCalendarGrid(
 
 @Composable
 private fun StatisticsGrid(
-    summaries: List<DailySummary>
+    summaries: List<DailySummary>,
+    volumeUnit: com.cemcakmak.hydrotracker.data.models.VolumeUnit
 ) {
+    val context = LocalContext.current
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
@@ -1023,21 +1054,25 @@ private fun StatisticsGrid(
                     color = MaterialTheme.colorScheme.error,
                 )
 
+                val dailyAverageFormatted = VolumeUnitConverter.format(context, dailyAverage, volumeUnit)
+                val dailyAverageParts = dailyAverageFormatted.split(" ", limit = 2)
                 StatCard(
                     modifier = Modifier.weight(1f),
                     icon = Icons.Default.Stars,
                     title = stringResource(R.string.history_stat_daily_average),
-                    value = WaterCalculator.formatWaterAmount(dailyAverage).split(" ")[0],
-                    subtitle = WaterCalculator.formatWaterAmount(dailyAverage).split(" ")[1],
+                    value = dailyAverageParts.getOrElse(0) { "" },
+                    subtitle = dailyAverageParts.getOrElse(1) { "" },
                     color = MaterialTheme.colorScheme.secondary
                 )
 
+                val totalIntakeFormatted = VolumeUnitConverter.format(context, totalIntake, volumeUnit)
+                val totalIntakeParts = totalIntakeFormatted.split(" ", limit = 2)
                 StatCard(
                     modifier = Modifier.weight(1f),
                     icon = Icons.Default.WaterDrop,
                     title = stringResource(R.string.history_stat_total_intake),
-                    value = "${(totalIntake / 1000).toInt()}",
-                    subtitle = stringResource(R.string.unit_liters),
+                    value = totalIntakeParts.getOrElse(0) { "" },
+                    subtitle = totalIntakeParts.getOrElse(1) { "" },
                     color = MaterialTheme.colorScheme.tertiary,
                 )
             }
@@ -1215,7 +1250,10 @@ data class ChartDetailData(
 private fun InlineDetailPanel(
     data: ChartDetailData,
     onDismiss: () -> Unit,
+    volumeUnit: com.cemcakmak.hydrotracker.data.models.VolumeUnit,
+    dateFormat: com.cemcakmak.hydrotracker.data.models.DateFormatPattern
 ) {
+    val context = LocalContext.current
         Card(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1236,7 +1274,7 @@ private fun InlineDetailPanel(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = formatDisplayDate(data.date),
+                        text = DateTimeFormatters.formatDate(LocalDate.parse(data.date), dateFormat),
                         style = MaterialTheme.typography.titleMediumEmphasized,
                         color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
@@ -1274,7 +1312,7 @@ private fun InlineDetailPanel(
                             color = MaterialTheme.colorScheme.onPrimaryContainer
                         )
                         Text(
-                            text = WaterCalculator.formatWaterAmount(data.amount),
+                            text = VolumeUnitConverter.format(context, data.amount, volumeUnit),
                             style = MaterialTheme.typography.titleLargeEmphasized,
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -1293,7 +1331,7 @@ private fun InlineDetailPanel(
                                     Text(
                                         text = stringResource(
                                             R.string.history_detail_goal,
-                                            WaterCalculator.formatWaterAmount(goal)
+                                            VolumeUnitConverter.format(context, goal, volumeUnit)
                                         ),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onPrimaryContainer
@@ -1326,17 +1364,6 @@ private fun InlineDetailPanel(
         }
     }
 
-private fun formatDisplayDate(dateString: String): String {
-    return try {
-        val inputFormat = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())
-        val outputFormat = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
-        val date = inputFormat.parse(dateString)
-        outputFormat.format(date ?: Date())
-    } catch (_: Exception) {
-        dateString
-    }
-}
-
 
 
 @Composable
@@ -1345,7 +1372,8 @@ private fun getCurrentPeriodText(
     weekOffset: Int,
     monthOffset: Int,
     yearOffset: Int,
-    weekStartDay: WeekStartDay = WeekStartDay.SYSTEM
+    weekStartDay: WeekStartDay = WeekStartDay.SYSTEM,
+    dateFormat: com.cemcakmak.hydrotracker.data.models.DateFormatPattern = com.cemcakmak.hydrotracker.data.models.DateFormatPattern.SYSTEM
 ): String {
     return when (period) {
         TimePeriod.WEEKLY -> {
@@ -1354,7 +1382,7 @@ private fun getCurrentPeriodText(
             when (weekOffset) {
                 0 -> stringResource(R.string.history_this_week)
                 -1 -> stringResource(R.string.history_last_week)
-                else -> "${startOfWeek.format(DateTimeFormatter.ofPattern("MMM d", Locale.getDefault()))} - ${endOfWeek.format(DateTimeFormatter.ofPattern("MMM d", Locale.getDefault()))}"
+                else -> "${DateTimeFormatters.formatDate(startOfWeek, dateFormat)} - ${DateTimeFormatters.formatDate(endOfWeek, dateFormat)}"
             }
         }
         TimePeriod.MONTHLY -> {
@@ -1363,7 +1391,7 @@ private fun getCurrentPeriodText(
             when (monthOffset) {
                 0 -> stringResource(R.string.history_this_month)
                 -1 -> stringResource(R.string.history_last_month)
-                else -> targetMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault()))
+                else -> targetMonth.format(DateTimeFormatter.ofPattern("MMMM yyyy"))
             }
         }
         TimePeriod.YEARLY -> {
@@ -1372,7 +1400,7 @@ private fun getCurrentPeriodText(
             when (yearOffset) {
                 0 -> stringResource(R.string.history_this_year)
                 -1 -> stringResource(R.string.history_last_year)
-                else -> targetYear.format(DateTimeFormatter.ofPattern("yyyy", Locale.getDefault()))
+                else -> targetYear.format(DateTimeFormatter.ofPattern("yyyy"))
             }
         }
     }
@@ -1434,7 +1462,7 @@ private fun filterSummariesByPeriod(
     
     return summaries.filter { summary ->
         val summaryDate = LocalDate.parse(summary.date)
-        summaryDate >= startDate && summaryDate <= endDate
+        summaryDate in startDate..endDate
     }
 }
 

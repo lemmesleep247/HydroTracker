@@ -113,7 +113,7 @@ class MainActivity : ComponentActivity() {
     // Health Connect permission launcher - using proper Activity context
     private lateinit var healthConnectPermissionLauncher: ActivityResultLauncher<Set<String>>
 
-    // Listener so a system contrast change (Android 14+) re-applies the dynamic colors live
+    // Listener so a system contrast change (Android 14+) re-applies the dynamic colours live
     private var contrastChangeListener: UiModeManager.ContrastChangeListener? = null
 
     override fun attachBaseContext(newBase: Context) {
@@ -132,7 +132,7 @@ class MainActivity : ComponentActivity() {
         }
 
         // Follow the system contrast setting (Android 14+). The platform bakes contrast into the
-        // dynamic color palette, so recreate on change to reload it immediately while the app is open.
+        // dynamic colour palette, so recreate on change to reload it immediately while the app is open.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
             val uiModeManager = getSystemService(UiModeManager::class.java)
             val listener = UiModeManager.ContrastChangeListener { recreate() }
@@ -176,7 +176,7 @@ class MainActivity : ComponentActivity() {
             // Notify user if there were issues
             if (DatabaseMigrationHelper.shouldNotifyUser(healthResult)) {
                 android.util.Log.w("MainActivity", "Database migration issue: $healthMessage")
-                // You can add a toast or dialog here if needed for critical failures
+                // You can add a toast or dialogue here if needed for critical failures
             }
         }
 
@@ -289,7 +289,7 @@ fun HydroTrackerApp(
                 updateRepository.maybeAutoCheck()
             }
 
-            // Home-screen update dialog — only shown when on Home and an update is available.
+            // Home-screen update dialogue — only shown when on Home and an update is available.
             var showUpdateDialog by remember { mutableStateOf(false) }
             val updateStatus by updateRepository.updateStatus.collectAsState()
             LaunchedEffect(currentKey, updateStatus) {
@@ -424,6 +424,7 @@ fun HydroTrackerApp(
                                         add(NavigationRoutes.Home)
                                     }
                                 },
+                                themePreferences = themePreferences,
                                 viewModel = onboardingVM
                             )
                         }
@@ -432,6 +433,7 @@ fun HydroTrackerApp(
                             userProfile?.let { profile ->
                                 HomeScreen(
                                     userProfile = profile,
+                                    themePreferences = themePreferences,
                                     waterIntakeRepository = waterIntakeRepository,
                                     containerPresetRepository = containerPresetRepository,
                                     activeBeverages = activeBeverages,
@@ -448,6 +450,7 @@ fun HydroTrackerApp(
                             HistoryScreen(
                                 waterIntakeRepository = waterIntakeRepository,
                                 themePreferences = themePreferences,
+                                userProfile = userProfile,
                                 paddingValues = paddingValues
                             )
                         }
@@ -456,6 +459,7 @@ fun HydroTrackerApp(
                             userProfile?.let {
                                 ProfileScreen(
                                     userProfile = it,
+                                    themePreferences = themePreferences,
                                     userRepository = userRepository,
                                     waterIntakeRepository = waterIntakeRepository,
                                     paddingValues = paddingValues,
@@ -493,7 +497,17 @@ fun HydroTrackerApp(
                         entry<NavigationRoutes.SettingsDisplay> {
                             DisplayLocaleScreen(
                                 themePreferences = themePreferences,
+                                userProfile = userProfile,
                                 onWeekStartDayChange = themeViewModel::updateWeekStartDay,
+                                onTimeFormatChange = themeViewModel::updateTimeFormat,
+                                onDateFormatChange = themeViewModel::updateDateFormat,
+                                onVolumeUnitChange = { unit ->
+                                    userProfile?.let { profile ->
+                                        coroutineScope.launch {
+                                            userRepository.saveUserProfile(profile.copy(volumeUnit = unit))
+                                        }
+                                    }
+                                },
                                 onNavigateBack = popBackStack
                             )
                         }
@@ -504,6 +518,7 @@ fun HydroTrackerApp(
                                 waterIntakeRepository = waterIntakeRepository,
                                 snackbarHostState = snackbarHostState,
                                 healthConnectPermissionLauncher = healthConnectPermissionLauncher,
+                                themePreferences = themePreferences,
                                 onHydrationStandardChange = { newStandard ->
                                     userProfile?.let { profile ->
                                         val newGoal = com.cemcakmak.hydrotracker.utils.WaterCalculator.calculateDailyWaterGoal(
@@ -545,6 +560,7 @@ fun HydroTrackerApp(
                             ContainerPresetsScreen(
                                 containerPresetRepository = containerPresetRepository,
                                 snackbarHostState = snackbarHostState,
+                                userProfile = userProfile,
                                 onNavigateBack = popBackStack
                             )
                         }
@@ -660,6 +676,8 @@ fun HydroTrackerApp(
                         entry<NavigationRoutes.HealthConnectData> {
                             HealthConnectDataScreen(
                                 waterIntakeRepository = waterIntakeRepository,
+                                userProfile = userProfile,
+                                themePreferences = themePreferences,
                                 onNavigateBack = popBackStack
                             )
                         }

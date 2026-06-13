@@ -91,6 +91,7 @@ import com.cemcakmak.hydrotracker.notifications.NotificationContentProvider
 import com.cemcakmak.hydrotracker.notifications.NotificationPermissionManager
 import com.cemcakmak.hydrotracker.presentation.common.BlurMorph
 import com.cemcakmak.hydrotracker.ui.theme.HydroTrackerTheme
+import com.cemcakmak.hydrotracker.utils.DateTimeFormatters
 import com.cemcakmak.hydrotracker.utils.WaterCalculator
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -310,15 +311,21 @@ fun NotificationsScreen(
                     ActiveHoursSection(
                         wakeUpTime = userProfile.wakeUpTime,
                         sleepTime = userProfile.sleepTime,
+                        themePreferences = themePreferences,
                         onWakeUpClick = { showWakeUpPicker = true },
                         onSleepClick = { showSleepPicker = true }
                     )
 
-                    val nextTime = remember(userProfile, isRemindersEnabled) {
+                    val nextTime = remember(userProfile, isRemindersEnabled, themePreferences) {
                         when {
                             !isRemindersEnabled -> null
                             isPreview -> "Preview mode"
-                            else -> HydroNotificationScheduler.getNextScheduledTime(context, userProfile)
+                            else -> HydroNotificationScheduler.getNextScheduledTime(
+                                context,
+                                userProfile,
+                                themePreferences.timeFormat,
+                                themePreferences.dateFormat
+                            )
                         }
                     }
 
@@ -715,9 +722,11 @@ private fun ReminderStyleSection(
 private fun ActiveHoursSection(
     wakeUpTime: String,
     sleepTime: String,
+    themePreferences: ThemePreferences,
     onWakeUpClick: () -> Unit,
     onSleepClick: () -> Unit
 ) {
+    val context = LocalContext.current
     val haptics = LocalHapticFeedback.current
 
     Column(
@@ -753,7 +762,7 @@ private fun ActiveHoursSection(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = wakeUpTime,
+                            text = DateTimeFormatters.formatTimeString(context, wakeUpTime, themePreferences.timeFormat),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -793,7 +802,7 @@ private fun ActiveHoursSection(
                             color = MaterialTheme.colorScheme.onSurface
                         )
                         Text(
-                            text = sleepTime,
+                            text = DateTimeFormatters.formatTimeString(context, sleepTime, themePreferences.timeFormat),
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )

@@ -37,13 +37,17 @@ import androidx.compose.ui.window.Dialog
 import kotlinx.coroutines.launch
 import com.cemcakmak.hydrotracker.R
 import com.cemcakmak.hydrotracker.data.models.UserProfile
+import com.cemcakmak.hydrotracker.data.models.VolumeUnit
 import com.cemcakmak.hydrotracker.data.models.ContainerPreset
 import com.cemcakmak.hydrotracker.data.models.BeverageType
+import com.cemcakmak.hydrotracker.data.models.ThemePreferences
 import com.cemcakmak.hydrotracker.data.database.repository.WaterIntakeRepository
 import com.cemcakmak.hydrotracker.data.database.repository.ContainerPresetRepository
 import com.cemcakmak.hydrotracker.data.database.repository.WaterProgress
 import com.cemcakmak.hydrotracker.data.database.repository.TodayStatistics
 import com.cemcakmak.hydrotracker.data.database.entities.WaterIntakeEntry
+import com.cemcakmak.hydrotracker.utils.DateTimeFormatters
+import com.cemcakmak.hydrotracker.utils.VolumeUnitConverter
 import com.cemcakmak.hydrotracker.utils.WaterCalculator
 import com.cemcakmak.hydrotracker.presentation.common.showSuccessSnackbar
 import com.cemcakmak.hydrotracker.presentation.common.showErrorSnackbar
@@ -59,6 +63,7 @@ import kotlin.time.Duration.Companion.milliseconds
 @Composable
 fun HomeScreen(
     userProfile: UserProfile,
+    themePreferences: ThemePreferences,
     waterIntakeRepository: WaterIntakeRepository,
     containerPresetRepository: ContainerPresetRepository,
     activeBeverages: List<BeverageOption> = BeverageType.getAllSorted().map { it.toOption() },
@@ -166,7 +171,7 @@ fun HomeScreen(
                 }
                 snackbarHostState.showSuccessSnackbar(
                     message = addedMessageTemplate.format(
-                        WaterCalculator.formatWaterAmount(amount),
+                        WaterCalculator.formatWaterAmount(context, amount, userProfile.volumeUnit),
                         beverageInfo
                     )
                 )
@@ -185,7 +190,9 @@ fun HomeScreen(
             
             result.onSuccess {
                 snackbarHostState.showSuccessSnackbar(
-                    message = deletedMessageTemplate.format(entry.getFormattedAmount())
+                    message = deletedMessageTemplate.format(
+                        entry.getFormattedAmount(context, userProfile.volumeUnit)
+                    )
                 )
             }.onFailure { error ->
                 snackbarHostState.showErrorSnackbar(
@@ -202,7 +209,9 @@ fun HomeScreen(
 
             result.onSuccess {
                 snackbarHostState.showSuccessSnackbar(
-                    message = updatedMessageTemplate.format(newEntry.getFormattedAmount())
+                    message = updatedMessageTemplate.format(
+                        newEntry.getFormattedAmount(context, userProfile.volumeUnit)
+                    )
                 )
             }.onFailure { error ->
                 snackbarHostState.showErrorSnackbar(
@@ -316,8 +325,8 @@ fun HomeScreen(
                     Text(
                         text = stringResource(
                             R.string.progress_current_of_goal_format,
-                            todayProgress.getFormattedCurrent(),
-                            todayProgress.getFormattedGoal()
+                            VolumeUnitConverter.format(context, todayProgress.currentIntake, userProfile.volumeUnit),
+                            VolumeUnitConverter.format(context, todayProgress.dailyGoal, userProfile.volumeUnit)
                         ),
                         style = MaterialTheme.typography.headlineMedium,
                         color = MaterialTheme.colorScheme.onSurface
@@ -354,17 +363,31 @@ fun HomeScreen(
                                 label = stringResource(R.string.home_label_entries),
                                 value = "${todayStatistics.entryCount}"
                             )
-                            if (todayStatistics.firstIntakeTime != null) {
+                            todayStatistics.firstIntakeTime?.let { timestamp ->
                                 StatChip(
                                     label = stringResource(R.string.home_label_first_intake),
-                                    value = todayStatistics.firstIntakeTime!!
+                                    value = DateTimeFormatters.formatTime(
+                                        context,
+                                        java.time.Instant.ofEpochMilli(timestamp)
+                                            .atZone(java.time.ZoneId.systemDefault())
+                                            .toLocalTime(),
+                                        themePreferences.timeFormat
+                                    )
                                 )
                             }
-                            if (todayStatistics.lastIntakeTime != null && todayStatistics.entryCount > 1) {
-                                StatChip(
-                                    label = stringResource(R.string.home_label_latest_intake),
-                                    value = todayStatistics.lastIntakeTime!!
-                                )
+                            if (todayStatistics.entryCount > 1) {
+                                todayStatistics.lastIntakeTime?.let { timestamp ->
+                                    StatChip(
+                                        label = stringResource(R.string.home_label_latest_intake),
+                                        value = DateTimeFormatters.formatTime(
+                                            context,
+                                            java.time.Instant.ofEpochMilli(timestamp)
+                                                .atZone(java.time.ZoneId.systemDefault())
+                                                .toLocalTime(),
+                                            themePreferences.timeFormat
+                                        )
+                                    )
+                                }
                             }
                         }
                     }
@@ -409,6 +432,7 @@ fun HomeScreen(
                             val preset = presets[index]
                             CarouselWaterCard(
                                 preset = preset,
+                                userProfile = userProfile,
                                 onClick = {
                                     addWaterIntake(preset.volume, preset.name)
                                     haptics.performHapticFeedback(HapticFeedbackType.Confirm)
@@ -470,6 +494,8 @@ fun HomeScreen(
                                 key(entry.id) {
                                     RecentEntryItem(
                                         entry = entry,
+                                        userProfile = userProfile,
+                                        themePreferences = themePreferences,
                                         onEdit = { entry ->
                                             entryToEdit = entry
                                             showEditDialog = true
@@ -503,6 +529,7 @@ fun HomeScreen(
             onBeverageChange = { newBeverage ->
                 selectedBeverage = newBeverage
             },
+            volumeUnit = userProfile.volumeUnit,
             beverages = activeBeverages
         )
     }
@@ -511,6 +538,8 @@ fun HomeScreen(
     if (showEditDialog && entryToEdit != null) {
         EditWaterDialog(
             entry = entryToEdit!!,
+            themePreferences = themePreferences,
+            volumeUnit = userProfile.volumeUnit,
             onDismiss = {
                 showEditDialog = false
                 entryToEdit = null
@@ -527,6 +556,7 @@ fun HomeScreen(
     // Add Container Preset Bottom Sheet
     if (showAddPresetSheet) {
         AddContainerPresetBottomSheet(
+            volumeUnit = userProfile.volumeUnit,
             onDismiss = { showAddPresetSheet = false },
             onAdd = { name, volume ->
                 coroutineScope.launch {
@@ -544,6 +574,7 @@ fun HomeScreen(
     if (showEditPresetSheet && presetToEdit != null) {
         EditContainerPresetBottomSheet(
             preset = presetToEdit!!,
+            volumeUnit = userProfile.volumeUnit,
             onDismiss = {
                 showEditPresetSheet = false
                 presetToEdit = null
@@ -578,9 +609,11 @@ fun HomeScreen(
 fun CarouselWaterCard(
     modifier: Modifier = Modifier,
     preset: ContainerPreset,
+    userProfile: UserProfile,
     onClick: () -> Unit,
     onLongPress: () -> Unit = {},
 ) {
+    val context = LocalContext.current
     Box(
         modifier = modifier
             .clip(MaterialTheme.shapes.extraLarge)
@@ -640,7 +673,7 @@ fun CarouselWaterCard(
             )
 
             Text(
-                text = preset.getFormattedVolume(),
+                text = preset.getFormattedVolume(context, userProfile.volumeUnit),
                 style = MaterialTheme.typography.labelLarge,
                 color = MaterialTheme.colorScheme.onPrimaryContainer
             )
@@ -693,10 +726,17 @@ private fun CustomWaterDialog(
     onConfirm: (Double) -> Unit,
     selectedBeverage: BeverageOption,
     onBeverageChange: (BeverageOption) -> Unit,
+    volumeUnit: VolumeUnit,
     beverages: List<BeverageOption> = BeverageType.getAllSorted().map { it.toOption() }
 ) {
     var amountText by remember { mutableStateOf("") }
     var isError by remember { mutableStateOf(false) }
+
+    val minAmountMl = 1.0
+    val maxAmountMl = 5000.0
+    val minAmountDisplay = VolumeUnitConverter.formatValue(minAmountMl, volumeUnit)
+    val maxAmountDisplay = VolumeUnitConverter.formatValue(maxAmountMl, volumeUnit)
+    val unitShortLabel = stringResource(volumeUnit.shortLabelResId)
 
     Dialog(onDismissRequest = onDismiss) {
         Card(
@@ -847,11 +887,13 @@ private fun CustomWaterDialog(
                         amountText = it
                         isError = false
                     },
-                    label = { Text(stringResource(R.string.home_label_amount_ml)) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    label = { Text(stringResource(R.string.home_label_amount_ml, unitShortLabel)) },
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = if (volumeUnit == VolumeUnit.MILLILITRES) KeyboardType.Number else KeyboardType.Decimal
+                    ),
                     isError = isError,
                     supportingText = if (isError) {
-                        { Text(stringResource(R.string.home_error_amount_invalid)) }
+                        { Text(stringResource(R.string.home_error_amount_invalid, minAmountDisplay, maxAmountDisplay)) }
                     } else null,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -869,9 +911,14 @@ private fun CustomWaterDialog(
                     Button(
                         shapes = ButtonDefaults.shapes(),
                         onClick = {
-                            val amount = amountText.toDoubleOrNull()
-                            if (amount != null && amount > 0 && amount <= 5000) {
-                                onConfirm(amount)
+                            val amountInUserUnit = amountText.toDoubleOrNull()
+                            if (amountInUserUnit != null && amountInUserUnit > 0) {
+                                val amountInMl = VolumeUnitConverter.toMillilitres(amountInUserUnit, volumeUnit)
+                                if (amountInMl in minAmountMl..maxAmountMl) {
+                                    onConfirm(amountInMl)
+                                } else {
+                                    isError = true
+                                }
                             } else {
                                 isError = true
                             }
@@ -889,11 +936,23 @@ private fun CustomWaterDialog(
 @Composable
 private fun EditWaterDialog(
     entry: WaterIntakeEntry,
+    themePreferences: ThemePreferences,
+    volumeUnit: VolumeUnit,
     onDismiss: () -> Unit,
     onConfirm: (WaterIntakeEntry) -> Unit,
     beverages: List<BeverageOption> = BeverageType.getAllSorted().map { it.toOption() }
 ) {
-    var amountText by remember { mutableStateOf(entry.amount.toString()) }
+    val context = LocalContext.current
+
+    val minAmountMl = 1.0
+    val maxAmountMl = 5000.0
+    val minAmountDisplay = VolumeUnitConverter.formatValue(minAmountMl, volumeUnit)
+    val maxAmountDisplay = VolumeUnitConverter.formatValue(maxAmountMl, volumeUnit)
+    val unitShortLabel = stringResource(volumeUnit.shortLabelResId)
+
+    var amountText by remember {
+        mutableStateOf(VolumeUnitConverter.formatValue(entry.amount, volumeUnit))
+    }
     var containerType by remember { mutableStateOf(entry.containerType) }
     var selectedBeverage by remember {
         mutableStateOf(
@@ -1027,7 +1086,7 @@ private fun EditWaterDialog(
                                     },
                                     onClick = {
                                         containerType = preset.name
-                                        amountText = preset.volume.toString()
+                                        amountText = VolumeUnitConverter.formatValue(preset.volume, volumeUnit)
                                         expanded = false
                                     }
                                 )
@@ -1126,7 +1185,11 @@ private fun EditWaterDialog(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     OutlinedTextField(
-                        value = String.format(java.util.Locale.getDefault(), "%02d:%02d", selectedHour, selectedMinute),
+                        value = DateTimeFormatters.formatTime(
+                            context,
+                            java.time.LocalTime.of(selectedHour, selectedMinute),
+                            themePreferences.timeFormat
+                        ),
                         onValueChange = { },
                         readOnly = true,
                         enabled = !isExternalEntry,
@@ -1160,11 +1223,13 @@ private fun EditWaterDialog(
                         }
                     },
                     enabled = !isExternalEntry,
-                    label = { Text(stringResource(R.string.home_label_amount_ml)) },
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                    label = { Text(stringResource(R.string.home_label_amount_ml, unitShortLabel)) },
+                    keyboardOptions = KeyboardOptions(
+                        keyboardType = if (volumeUnit == VolumeUnit.MILLILITRES) KeyboardType.Number else KeyboardType.Decimal
+                    ),
                     isError = isError && !isExternalEntry,
                     supportingText = if (isError && !isExternalEntry) {
-                        { Text(stringResource(R.string.home_error_amount_invalid)) }
+                        { Text(stringResource(R.string.home_error_amount_invalid, minAmountDisplay, maxAmountDisplay)) }
                     } else null,
                     modifier = Modifier.fillMaxWidth()
                 )
@@ -1187,25 +1252,30 @@ private fun EditWaterDialog(
                         Button(
                             shapes = ButtonDefaults.shapes(),
                             onClick = {
-                                val amount = amountText.toDoubleOrNull()
-                                if (amount != null && amount > 0 && amount <= 5000) {
-                                    // Calculate new timestamp with selected time
-                                    val newCalendar = java.util.Calendar.getInstance().apply {
-                                        timeInMillis = entry.timestamp
-                                        set(java.util.Calendar.HOUR_OF_DAY, selectedHour)
-                                        set(java.util.Calendar.MINUTE, selectedMinute)
-                                        set(java.util.Calendar.SECOND, 0)
-                                        set(java.util.Calendar.MILLISECOND, 0)
-                                    }
+                                val amountInUserUnit = amountText.toDoubleOrNull()
+                                if (amountInUserUnit != null && amountInUserUnit > 0) {
+                                    val amountInMl = VolumeUnitConverter.toMillilitres(amountInUserUnit, volumeUnit)
+                                    if (amountInMl in minAmountMl..maxAmountMl) {
+                                        // Calculate new timestamp with selected time
+                                        val newCalendar = java.util.Calendar.getInstance().apply {
+                                            timeInMillis = entry.timestamp
+                                            set(java.util.Calendar.HOUR_OF_DAY, selectedHour)
+                                            set(java.util.Calendar.MINUTE, selectedMinute)
+                                            set(java.util.Calendar.SECOND, 0)
+                                            set(java.util.Calendar.MILLISECOND, 0)
+                                        }
 
-                                    val updatedEntry = entry.copy(
-                                        amount = amount,
-                                        containerType = containerType,
-                                        beverageType = selectedBeverage.storageKey,
-                                        beverageMultiplier = selectedBeverage.storedMultiplier,
-                                        timestamp = newCalendar.timeInMillis
-                                    )
-                                    onConfirm(updatedEntry)
+                                        val updatedEntry = entry.copy(
+                                            amount = amountInMl,
+                                            containerType = containerType,
+                                            beverageType = selectedBeverage.storageKey,
+                                            beverageMultiplier = selectedBeverage.storedMultiplier,
+                                            timestamp = newCalendar.timeInMillis
+                                        )
+                                        onConfirm(updatedEntry)
+                                    } else {
+                                        isError = true
+                                    }
                                 } else {
                                     isError = true
                                 }
@@ -1304,9 +1374,12 @@ private fun StatChip(
 @Composable
 private fun RecentEntryItem(
     entry: WaterIntakeEntry,
+    userProfile: UserProfile,
+    themePreferences: ThemePreferences,
     onEdit: (WaterIntakeEntry) -> Unit = {},
     onDelete: (WaterIntakeEntry) -> Unit = {}
 ) {
+    val context = LocalContext.current
     // Find a matching preset to fetch its icon (res or vector)
     val preset = remember(entry.containerType) {
         ContainerPreset.getDefaultPresets()
@@ -1498,7 +1571,7 @@ private fun RecentEntryItem(
                         verticalArrangement = Arrangement.spacedBy(2.dp)
                     ) {
                         Text(
-                            text = entry.getFormattedTime(),
+                            text = entry.getFormattedTime(context, themePreferences.timeFormat),
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -1507,7 +1580,7 @@ private fun RecentEntryItem(
                                 text = stringResource(
                                     R.string.home_beverage_effective_format,
                                     beverageLabel,
-                                    entry.getFormattedEffectiveAmount()
+                                    entry.getFormattedEffectiveAmount(context, userProfile.volumeUnit)
                                 ),
                                 style = MaterialTheme.typography.labelMedium,
                                 color = MaterialTheme.colorScheme.primary
@@ -1520,7 +1593,7 @@ private fun RecentEntryItem(
                         horizontalAlignment = Alignment.End
                     ) {
                         Text(
-                            text = entry.getFormattedAmount(),
+                            text = entry.getFormattedAmount(context, userProfile.volumeUnit),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.primary
@@ -1541,6 +1614,7 @@ private fun RecentEntryItem(
     if (showDeleteDialog) {
         DeleteConfirmationDialog(
             entry = entry,
+            userProfile = userProfile,
             onConfirm = {
                 onDelete(entry)
                 showDeleteDialog = false
@@ -1555,9 +1629,11 @@ private fun RecentEntryItem(
 @Composable
 private fun DeleteConfirmationDialog(
     entry: WaterIntakeEntry,
+    userProfile: UserProfile,
     onConfirm: () -> Unit,
     onDismiss: () -> Unit
 ) {
+    val context = LocalContext.current
     val preset = remember(entry.containerType) {
         ContainerPreset.getDefaultPresets()
             .firstOrNull { it.name == entry.containerType }
@@ -1601,7 +1677,7 @@ private fun DeleteConfirmationDialog(
                 Text(
                     text = stringResource(
                         R.string.home_dialog_delete_message,
-                        entry.getFormattedAmount(),
+                        entry.getFormattedAmount(context, userProfile.volumeUnit),
                         containerLabel
                     ),
                     style = MaterialTheme.typography.bodyLarge,

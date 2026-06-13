@@ -23,6 +23,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.cemcakmak.hydrotracker.R
+import com.cemcakmak.hydrotracker.data.models.ThemePreferences
+import com.cemcakmak.hydrotracker.utils.DateTimeFormatters
+import androidx.compose.ui.platform.LocalContext
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -37,7 +40,8 @@ fun ScheduleStep(
     onWakeUpTimeChanged: (String) -> Unit,
     onSleepTimeChanged: (String) -> Unit,
     title: String,
-    description: String
+    description: String,
+    themePreferences: ThemePreferences = ThemePreferences()
 ) {
     var showWakeUpPicker by remember { mutableStateOf(false) }
     var showSleepPicker by remember { mutableStateOf(false) }
@@ -68,13 +72,15 @@ fun ScheduleStep(
             label = stringResource(R.string.onboarding_wake_label),
             time = wakeUpTime,
             icon = Icons.Default.WbSunny,
+            themePreferences = themePreferences
         ) { showWakeUpPicker = true }
 
         // Sleep Card
         TimeSelectionCard(
             label = stringResource(R.string.onboarding_sleep_label),
             time = sleepTime,
-            icon = Icons.Default.Bedtime
+            icon = Icons.Default.Bedtime,
+            themePreferences = themePreferences
         ) { showSleepPicker = true }
 
         // Preview Timeline
@@ -135,8 +141,10 @@ fun TimeSelectionCard(
     label: String,
     time: String,
     icon: ImageVector,
+    themePreferences: ThemePreferences = ThemePreferences(),
     onClick: () -> Unit
 ) {
+    val context = LocalContext.current
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -157,7 +165,7 @@ fun TimeSelectionCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            // Analog clock
+            // Analogue clock
             AnalogClock(time = time, size = 50.dp)
 
             // Text Section
@@ -173,7 +181,7 @@ fun TimeSelectionCard(
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = time,
+                    text = DateTimeFormatters.formatTimeString(context, time, themePreferences.timeFormat),
                     style = MaterialTheme.typography.headlineSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -211,7 +219,7 @@ fun AnalogClock(time: String, size: Dp) {
     val formatter = DateTimeFormatter.ofPattern("HH:mm")
     val localTime = try {
         LocalTime.parse(time, formatter)
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         LocalTime.of(7, 0)
     }
 
@@ -418,7 +426,7 @@ private fun calculateAwakeHours(wakeUpTime: String, sleepTime: String): Double {
         }
 
         awakeMinutes / 3600.0
-    } catch (e: Exception) {
+    } catch (_: Exception) {
         16.0 // fallback
     }
 }

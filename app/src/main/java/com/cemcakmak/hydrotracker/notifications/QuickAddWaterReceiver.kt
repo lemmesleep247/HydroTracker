@@ -10,7 +10,9 @@ import androidx.core.app.NotificationManagerCompat
 import com.cemcakmak.hydrotracker.R
 import com.cemcakmak.hydrotracker.data.database.DatabaseInitializer
 import com.cemcakmak.hydrotracker.data.models.ContainerPreset
+import com.cemcakmak.hydrotracker.data.models.VolumeUnit
 import com.cemcakmak.hydrotracker.data.repository.UserRepository
+import com.cemcakmak.hydrotracker.utils.VolumeUnitConverter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -84,16 +86,25 @@ class QuickAddWaterReceiver : BroadcastReceiver() {
     }
 
     private fun showSuccessNotification(context: Context) {
-        val notificationService = HydroNotificationService(context)
+
+        // Format the quick-add amount in the user's preferred unit.
+        val userRepository = UserRepository(context)
+        val volumeUnit = try {
+            kotlinx.coroutines.runBlocking {
+                userRepository.userProfile.first()?.volumeUnit ?: VolumeUnit.MILLILITRES
+            }
+        } catch (_: Exception) {
+            VolumeUnit.MILLILITRES
+        }
+        val amountText = VolumeUnitConverter.format(context, QUICK_ADD_AMOUNT, volumeUnit)
 
         // Create a simple success notification that auto-dismisses
         val successNotification = android.app.Notification.Builder(context, HydroNotificationService.CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_menu_save) // System checkmark icon
             .setContentTitle(context.getString(R.string.notification_quick_add_title))
-            .setContentText(context.getString(R.string.notification_quick_add_text, QUICK_ADD_AMOUNT.toInt()))
+            .setContentText(context.getString(R.string.notification_quick_add_text, amountText))
             .setAutoCancel(true)
             .setTimeoutAfter(3000) // Auto dismiss after 3 seconds
-            .setPriority(android.app.Notification.PRIORITY_LOW)
             .build()
 
         val notificationManager = NotificationManagerCompat.from(context)

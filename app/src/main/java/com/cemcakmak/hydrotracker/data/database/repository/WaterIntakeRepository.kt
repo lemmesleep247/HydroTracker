@@ -299,8 +299,8 @@ class WaterIntakeRepository(
                 entryCount = entries.size,
                 averageIntake = if (entries.isNotEmpty()) progress.currentIntake / entries.size else 0.0,
                 largestIntake = entries.maxOfOrNull { it.getEffectiveHydrationAmount() } ?: 0.0,
-                firstIntakeTime = entries.minByOrNull { it.timestamp }?.getFormattedTime(),
-                lastIntakeTime = entries.maxByOrNull { it.timestamp }?.getFormattedTime(),
+                firstIntakeTime = entries.minByOrNull { it.timestamp }?.timestamp,
+                lastIntakeTime = entries.maxByOrNull { it.timestamp }?.timestamp,
                 isGoalAchieved = progress.isGoalAchieved,
                 remainingAmount = progress.remainingAmount
             )
@@ -512,22 +512,7 @@ data class WaterProgress(
     val progress: Float,
     val isGoalAchieved: Boolean,
     val remainingAmount: Double
-) {
-    fun getFormattedCurrent(): String {
-        return when {
-            currentIntake >= 1000 -> "${String.format(Locale.US, "%.1f", currentIntake / 1000)} L"
-            else -> "${currentIntake.toInt()} ml"
-        }
-    }
-
-    fun getFormattedGoal(): String {
-        return when {
-            dailyGoal >= 1000 -> "${String.format(Locale.US, "%.1f", dailyGoal / 1000)} L"
-            else -> "${dailyGoal.toInt()} ml"
-        }
-    }
-
-}
+)
 
 data class TodayStatistics(
     val totalIntake: Double,
@@ -535,8 +520,8 @@ data class TodayStatistics(
     val entryCount: Int,
     val averageIntake: Double,
     val largestIntake: Double,
-    val firstIntakeTime: String?,
-    val lastIntakeTime: String?,
+    val firstIntakeTime: Long?,
+    val lastIntakeTime: Long?,
     val isGoalAchieved: Boolean,
     val remainingAmount: Double
 )

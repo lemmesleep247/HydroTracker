@@ -9,6 +9,8 @@ import kotlinx.coroutines.launch
 import com.cemcakmak.hydrotracker.data.models.ThemePreferences
 import com.cemcakmak.hydrotracker.data.models.DarkModePreference
 import com.cemcakmak.hydrotracker.data.models.ColorSource
+import com.cemcakmak.hydrotracker.data.models.DateFormatPattern
+import com.cemcakmak.hydrotracker.data.models.TimeFormat
 import com.cemcakmak.hydrotracker.data.models.WeekStartDay
 import com.cemcakmak.hydrotracker.data.models.AppFont
 import com.cemcakmak.hydrotracker.data.models.NavBarLabelMode
@@ -52,6 +54,26 @@ class ThemeViewModel(private val userRepository: UserRepository) : ViewModel() {
         viewModelScope.launch {
             val newPreferences = _themePreferences.value.copy(
                 weekStartDay = weekStartDay
+            )
+            _themePreferences.value = newPreferences
+            userRepository.updateThemePreferences(newPreferences)
+        }
+    }
+
+    fun updateTimeFormat(timeFormat: TimeFormat) {
+        viewModelScope.launch {
+            val newPreferences = _themePreferences.value.copy(
+                timeFormat = timeFormat
+            )
+            _themePreferences.value = newPreferences
+            userRepository.updateThemePreferences(newPreferences)
+        }
+    }
+
+    fun updateDateFormat(dateFormat: DateFormatPattern) {
+        viewModelScope.launch {
+            val newPreferences = _themePreferences.value.copy(
+                dateFormat = dateFormat
             )
             _themePreferences.value = newPreferences
             userRepository.updateThemePreferences(newPreferences)
