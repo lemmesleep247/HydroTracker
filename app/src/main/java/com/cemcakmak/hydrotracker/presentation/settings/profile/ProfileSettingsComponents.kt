@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -75,7 +74,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardCapitalization
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -517,10 +515,6 @@ internal fun DailyGoalBottomSheetContent(
     val haptics = LocalHapticFeedback.current
 
     var sliderPosition by remember { mutableFloatStateOf(currentGoalMl.toFloat()) }
-    var manualText by remember(currentGoalMl) {
-        mutableStateOf(VolumeUnitConverter.formatValue(currentGoalMl, volumeUnit))
-    }
-    var isError by remember { mutableStateOf(false) }
 
     // Animate the displayed value whenever the slider snaps.
     val animatedGoalMl = rememberAnimatedDouble(
@@ -551,7 +545,7 @@ internal fun DailyGoalBottomSheetContent(
 
         // Rolling number headline
         Text(
-            text = VolumeUnitConverter.format(context, animatedGoalMl.toDouble(), volumeUnit),
+            text = stringResource(R.string.unit_milliliters_format, animatedGoalMl.toInt().toString()),
             style = MaterialTheme.typography.headlineSmall,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.align(Alignment.CenterHorizontally)
@@ -569,8 +563,6 @@ internal fun DailyGoalBottomSheetContent(
                 if (newValue != sliderPosition) {
                     haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
                     sliderPosition = newValue
-                    manualText = VolumeUnitConverter.formatValue(newValue.toDouble(), volumeUnit)
-                    isError = false
                 }
             },
             onValueChangeFinished = {
@@ -610,10 +602,9 @@ internal fun DailyGoalBottomSheetContent(
                             val yOffset = size.height / 2 - iconSize.toSize().height / 2
                             val activeTrackEnd = size.width * sliderState.coercedValueAsFraction - thumbTrackGapSize.toPx()
                             val inactiveTrackStart = activeTrackEnd + thumbTrackGapSize.toPx() * 2
-                            val activeTrackWidth = activeTrackEnd
                             val inactiveTrackWidth = size.width - inactiveTrackStart
 
-                            if (iconSize.toSize().width * 2 < activeTrackWidth - iconPadding.toPx() * 2) {
+                            if (iconSize.toSize().width * 2 < activeTrackEnd - iconPadding.toPx() * 2) {
                                 trackIconStart(Offset(0f, yOffset), activeIconColor)
                                 trackIconEnd(Offset(activeTrackEnd, yOffset), activeIconColor)
                             }
@@ -645,59 +636,6 @@ internal fun DailyGoalBottomSheetContent(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
-
-        // Manual input
-        OutlinedTextField(
-            value = manualText,
-            onValueChange = { newText ->
-                manualText = newText
-                isError = false
-                newText.toDoubleOrNull()?.let { valueInUserUnit ->
-                    val valueInMl = VolumeUnitConverter.toMillilitres(valueInUserUnit, volumeUnit)
-                    if (valueInMl in GOAL_MIN_ML.toDouble()..GOAL_MAX_ML.toDouble()) {
-                        sliderPosition = valueInMl.toFloat()
-                    }
-                }
-            },
-            label = { Text(stringResource(R.string.profile_goal_manual_label)) },
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
-            isError = isError,
-            supportingText = {
-                Text(
-                    stringResource(
-                        R.string.profile_goal_input_hint,
-                        VolumeUnitConverter.formatValue(GOAL_MIN_ML.toDouble(), volumeUnit),
-                        VolumeUnitConverter.formatValue(GOAL_MAX_ML.toDouble(), volumeUnit)
-                    )
-                )
-            },
-            modifier = Modifier.fillMaxWidth()
-        )
-
-        // Apply button for manual input
-        val hapticsApply = LocalHapticFeedback.current
-        Button(
-            onClick = {
-                val valueInUserUnit = manualText.toDoubleOrNull()
-                if (valueInUserUnit != null) {
-                    val valueInMl = VolumeUnitConverter.toMillilitres(valueInUserUnit, volumeUnit)
-                    if (valueInMl in GOAL_MIN_ML.toDouble()..GOAL_MAX_ML.toDouble()) {
-                        hapticsApply.performHapticFeedback(HapticFeedbackType.Confirm)
-                        onGoalChange(valueInMl)
-                        sliderPosition = valueInMl.toFloat()
-                    } else {
-                        isError = true
-                    }
-                } else {
-                    isError = true
-                }
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(stringResource(R.string.action_save))
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
     }
 }
 
