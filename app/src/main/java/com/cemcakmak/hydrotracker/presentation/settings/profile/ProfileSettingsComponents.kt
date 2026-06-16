@@ -62,7 +62,6 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.translate
@@ -253,14 +252,20 @@ fun ProfileAvatar(
     val sharedTransitionScope = LocalSharedTransitionScope.current
     val animatedVisibilityScope = LocalNavAnimatedVisibilityScope.current
 
-    var profileBitmap by remember(profileImagePath) { mutableStateOf<ImageBitmap?>(null) }
+    var profileBitmap by remember(profileImagePath) {
+        mutableStateOf(
+            if (profileImagePath != null && File(profileImagePath).exists()) {
+                ImageUtils.loadProfileImageBitmap(context, profileImagePath)?.asImageBitmap()
+            } else {
+                null
+            }
+        )
+    }
 
-    // Load the image when profileImagePath changes
+    // Asynchronous fallback in case the synchronous initial load missed the cache.
     LaunchedEffect(profileImagePath) {
-        profileBitmap = if (profileImagePath != null && File(profileImagePath).exists()) {
-            ImageUtils.loadProfileImageBitmap(context)?.asImageBitmap()
-        } else {
-            null
+        if (profileBitmap == null && profileImagePath != null && File(profileImagePath).exists()) {
+            profileBitmap = ImageUtils.loadProfileImageBitmap(context, profileImagePath)?.asImageBitmap()
         }
     }
 

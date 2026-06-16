@@ -20,7 +20,9 @@ object ImageUtils {
     private const val PROFILE_IMAGE_FILENAME = "profile_image.jpg"
     private const val MAX_IMAGE_SIZE = 300 // Max width/height in pixels
     private const val JPEG_QUALITY = 85 // Compression quality (0-100)
-    
+
+    private val profileImageCache = mutableMapOf<String, Bitmap>()
+
     /**
      * Save an image URI to local storage with compression
      * @param context Application context
@@ -50,7 +52,8 @@ object ImageUtils {
                     correctedBitmap.recycle()
                 }
                 compressedBitmap.recycle()
-                
+
+                clearProfileImageCache()
                 file.absolutePath
             }
         } catch (e: Exception) {
@@ -87,11 +90,15 @@ object ImageUtils {
     fun deleteProfileImage(context: Context): Boolean {
         return try {
             val file = getProfileImageFile(context)
-            if (file.exists()) {
+            val deleted = if (file.exists()) {
                 file.delete()
             } else {
                 true
             }
+            if (deleted) {
+                clearProfileImageCache()
+            }
+            deleted
         } catch (e: Exception) {
             false
         }
@@ -165,19 +172,34 @@ object ImageUtils {
     }
     
     /**
-     * Load profile image as bitmap if it exists
+     * Load profile image as bitmap if it exists.
+     * Results are cached in memory so subsequent loads are instantaneous.
      */
-    fun loadProfileImageBitmap(context: Context): Bitmap? {
+    fun loadProfileImageBitmap(context: Context, path: String? = null): Bitmap? {
         return try {
-            val file = getProfileImageFile(context)
+            val file = path?.let { File(it) } ?: getProfileImageFile(context)
+            val cacheKey = file.absolutePath
+
+            profileImageCache[cacheKey]?.let { return it }
+
             if (file.exists()) {
-                BitmapFactory.decodeFile(file.absolutePath)
+                BitmapFactory.decodeFile(file.absolutePath)?.also { bitmap ->
+                    profileImageCache[cacheKey] = bitmap
+                }
             } else {
                 null
             }
         } catch (e: Exception) {
             null
         }
+    }
+
+    /**
+     * Clear the in-memory profile image cache.
+     * Call this after the profile picture is updated or deleted.
+     */
+    fun clearProfileImageCache() {
+        profileImageCache.clear()
     }
     
     /**
