@@ -26,4 +26,7 @@ sealed interface NavigationRoutes : NavKey {
     @Serializable data object SettingsDeveloperHaptics : NavigationRoutes
     @Serializable data object SettingsDeveloperHapticsLab : NavigationRoutes
     @Serializable data object SettingsProfile : NavigationRoutes
+
+    @Serializable
+    data class CropProfileImage(val sourceUri: String) : NavigationRoutes
 }

@@ -1,5 +1,6 @@
 package com.cemcakmak.hydrotracker.presentation.settings.profile
 
+import android.net.Uri
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -54,6 +55,7 @@ fun ProfileSettingsScreen(
     todayEntryCount: Int,
     daysTracked: Int,
     todayGoalProgress: Float,
+    onNavigateToCrop: (Uri) -> Unit,
     onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -245,7 +247,11 @@ fun ProfileSettingsScreen(
     if (showPhotoSheet) {
         UpdateProfilePictureBottomSheet(
             onImageSelected = { uri ->
-                saveProfile(userProfile.copy(profileImagePath = uri?.toString()))
+                if (uri != null) {
+                    onNavigateToCrop(uri)
+                } else {
+                    saveProfile(userProfile.copy(profileImagePath = null))
+                }
                 showPhotoSheet = false
             },
             onDismiss = { showPhotoSheet = false }
@@ -326,6 +332,7 @@ fun ProfileSettingsScreenPreviewLight() {
             todayEntryCount = 5,
             daysTracked = 12,
             todayGoalProgress = 0.65f,
+            onNavigateToCrop = {},
             onNavigateBack = {}
         )
     }

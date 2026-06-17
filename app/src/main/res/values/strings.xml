@@ -116,7 +116,7 @@
     <string name="date_format_day_month_year_desc">Day / Month / Year</string>
     <string name="date_format_month_day_year">Jun 16, 2026</string>
     <string name="date_format_month_day_year_desc">Month / Day / Year</string>
-    <string name="date_format_year_month_day">2026-06-16</string>
+    <string name="date_format_year_month_day">2026–06–16</string>
     <string name="date_format_year_month_day_desc">Year / Month / Day</string>
 
     <!-- Volume unit options -->
@@ -1071,6 +1071,14 @@
     <string name="profile_photo_sheet_gallery_subtitle">Select an existing file</string>
     <string name="profile_photo_sheet_camera_title">Take a photo</string>
     <string name="profile_photo_sheet_delete">Remove profile photo</string>
+
+    <!-- Profile photo cropper -->
+    <string name="profile_crop_title">Crop Profile Photo</string>
+    <string name="cd_crop_image">Photo to crop</string>
+    <string name="cd_rotate_left">Rotate counter-clockwise</string>
+    <string name="cd_rotate_right">Rotate clockwise</string>
+    <string name="error_loading_image">Could not load image</string>
+    <string name="error_saving_image">Could not save cropped image</string>
 
     <!-- Water facts shown with gentle reminders -->
     <string-array name="notification_facts">

@@ -74,10 +74,12 @@ import com.cemcakmak.hydrotracker.presentation.settings.LicensesScreen
 import com.cemcakmak.hydrotracker.presentation.settings.SupportDevelopmentScreen
 import com.cemcakmak.hydrotracker.presentation.settings.HealthConnectDataScreen
 import com.cemcakmak.hydrotracker.presentation.settings.profile.ProfileSettingsScreen
+import com.cemcakmak.hydrotracker.presentation.settings.profile.crop.CropProfileImageScreen
 import com.cemcakmak.hydrotracker.presentation.onboarding.*
 import com.cemcakmak.hydrotracker.notifications.*
 import com.cemcakmak.hydrotracker.ui.theme.HydroTrackerTheme
 import com.cemcakmak.hydrotracker.health.HealthConnectManager
+import androidx.core.net.toUri
 
 // Navigation animation tuning
 private const val TAB_SWITCH_DURATION = 400
@@ -694,10 +696,25 @@ fun HydroTrackerApp(
                                         todayEntryCount = todayStatistics.entryCount,
                                         daysTracked = last30DaysEntries.groupBy { it.date }.size,
                                         todayGoalProgress = todayStatistics.goalProgress,
+                                        onNavigateToCrop = { uri ->
+                                            wasPop = true
+                                            backStack.add(NavigationRoutes.CropProfileImage(uri.toString()))
+                                        },
                                         onNavigateBack = popBackStack
                                     )
                                 } ?: LoadingScreen()
                             }
+                        }
+
+                        entry<NavigationRoutes.CropProfileImage> { route ->
+                            userProfile?.let { profile ->
+                                CropProfileImageScreen(
+                                    sourceUri = route.sourceUri.toUri(),
+                                    userProfile = profile,
+                                    userRepository = userRepository,
+                                    onNavigateBack = popBackStack
+                                )
+                            } ?: LoadingScreen()
                         }
 
                         entry<NavigationRoutes.HealthConnectData> {

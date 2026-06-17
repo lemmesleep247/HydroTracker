@@ -4,12 +4,11 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Matrix
-import android.media.ExifInterface
 import android.net.Uri
+import androidx.core.graphics.scale
+import androidx.exifinterface.media.ExifInterface
 import java.io.File
 import java.io.FileOutputStream
-import java.io.IOException
-import java.io.InputStream
 
 /**
  * Utility class for handling profile image operations
@@ -18,13 +17,19 @@ import java.io.InputStream
 object ImageUtils {
     
     private const val PROFILE_IMAGE_FILENAME = "profile_image.jpg"
+    private const val PROFILE_IMAGE_WEBP_FILENAME = "profile_image.webp"
     private const val MAX_IMAGE_SIZE = 300 // Max width/height in pixels
     private const val JPEG_QUALITY = 85 // Compression quality (0-100)
 
     private val profileImageCache = mutableMapOf<String, Bitmap>()
 
     /**
-     * Save an image URI to local storage with compression
+     * Save an image URI to local storage with compression.
+     *
+     * This legacy path writes a 300×300 JPEG used during onboarding. The profile
+     * settings cropper writes a higher-resolution WebP via
+     * [com.cemcakmak.hydrotracker.presentation.settings.profile.crop.CropImageUtils].
+     *
      * @param context Application context
      * @param imageUri URI of the image to save
      * @return Local file path if successful, null if failed
@@ -36,17 +41,17 @@ object ImageUtils {
                 // Decode the image
                 val originalBitmap = BitmapFactory.decodeStream(stream)
                     ?: return null
-                
+
                 // Apply rotation correction if needed
                 val correctedBitmap = correctImageOrientation(context, imageUri, originalBitmap)
-                
+
                 // Compress and resize the image
                 val compressedBitmap = compressImage(correctedBitmap)
-                
+
                 // Save to internal storage
-                val file = getProfileImageFile(context)
+                val file = getProfileImageJpgFile(context)
                 saveBitmapToFile(compressedBitmap, file)
-                
+
                 // Clean up
                 if (correctedBitmap != originalBitmap) {
                     correctedBitmap.recycle()
@@ -61,47 +66,49 @@ object ImageUtils {
             null
         }
     }
-    
+
     /**
-     * Get the profile image file
+     * Get the legacy JPEG profile image file.
      */
-    private fun getProfileImageFile(context: Context): File {
+    private fun getProfileImageJpgFile(context: Context): File {
         return File(context.filesDir, PROFILE_IMAGE_FILENAME)
     }
-    
+
     /**
-     * Check if profile image exists
+     * Get the cropped WebP profile image file.
      */
-    fun profileImageExists(context: Context): Boolean {
-        return getProfileImageFile(context).exists()
+    private fun getProfileImageWebpFile(context: Context): File {
+        return File(context.filesDir, PROFILE_IMAGE_WEBP_FILENAME)
     }
-    
+
     /**
-     * Get profile image path if it exists
+     * Returns the existing profile image file, preferring the WebP version and
+     * falling back to the legacy JPEG file.
      */
-    fun getProfileImagePath(context: Context): String? {
-        val file = getProfileImageFile(context)
-        return if (file.exists()) file.absolutePath else null
+    private fun getExistingProfileImageFile(context: Context): File? {
+        val webpFile = getProfileImageWebpFile(context)
+        if (webpFile.exists()) return webpFile
+
+        val jpgFile = getProfileImageJpgFile(context)
+        return if (jpgFile.exists()) jpgFile else null
     }
-    
+
     /**
-     * Delete the current profile image
+     * Delete all profile image files and clear the in-memory cache.
      */
     fun deleteProfileImage(context: Context): Boolean {
         return try {
-            val file = getProfileImageFile(context)
-            val deleted = if (file.exists()) {
-                file.delete()
-            } else {
-                true
-            }
-            if (deleted) {
-                clearProfileImageCache()
-            }
-            deleted
-        } catch (e: Exception) {
+            val jpgDeleted = getProfileImageJpgFile(context).deleteExisting()
+            val webpDeleted = getProfileImageWebpFile(context).deleteExisting()
+            clearProfileImageCache()
+            jpgDeleted || webpDeleted
+        } catch (_: Exception) {
             false
         }
+    }
+
+    private fun File.deleteExisting(): Boolean {
+        return if (exists()) delete() else false
     }
     
     /**
@@ -123,7 +130,7 @@ object ImageUtils {
             // Resize if image is larger than max dimensions
             val newWidth = (width * ratio).toInt()
             val newHeight = (height * ratio).toInt()
-            Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true)
+            bitmap.scale(newWidth, newHeight)
         } else {
             // Image is already small enough
             bitmap
@@ -147,7 +154,7 @@ object ImageUtils {
                     else -> bitmap
                 }
             } ?: bitmap
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             // If we can't read EXIF data, return original bitmap
             bitmap
         }
@@ -177,7 +184,7 @@ object ImageUtils {
      */
     fun loadProfileImageBitmap(context: Context, path: String? = null): Bitmap? {
         return try {
-            val file = path?.let { File(it) } ?: getProfileImageFile(context)
+            val file = path?.let { File(it) } ?: getExistingProfileImageFile(context) ?: return null
             val cacheKey = file.absolutePath
 
             profileImageCache[cacheKey]?.let { return it }
@@ -189,7 +196,7 @@ object ImageUtils {
             } else {
                 null
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             null
         }
     }
@@ -202,15 +209,4 @@ object ImageUtils {
         profileImageCache.clear()
     }
     
-    /**
-     * Get file size of profile image in bytes
-     */
-    fun getProfileImageSize(context: Context): Long {
-        return try {
-            val file = getProfileImageFile(context)
-            if (file.exists()) file.length() else 0L
-        } catch (e: Exception) {
-            0L
-        }
-    }
 }

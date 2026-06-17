@@ -445,6 +445,7 @@ fun SettingsHubInteractivePreview() {
                     todayEntryCount = 5,
                     daysTracked = 12,
                     todayGoalProgress = 0.65f,
+                    onNavigateToCrop = {},
                     onNavigateBack = onNavigateBack
                 )
                 else -> {}

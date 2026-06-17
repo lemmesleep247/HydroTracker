@@ -80,7 +80,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
-import androidx.core.net.toUri
 import com.cemcakmak.hydrotracker.R
 import com.cemcakmak.hydrotracker.data.models.ActivityLevel
 import com.cemcakmak.hydrotracker.data.models.AgeGroup
@@ -685,14 +684,10 @@ internal fun UpdateProfilePictureBottomSheet(
             contract = ActivityResultContracts.TakePicture()
         ) { success ->
             if (success) {
-                // The camera image was saved to a temporary file, now save it properly
+                // Pass the temporary file URI to the cropper.
                 val tempFile = File(context.cacheDir, "temp_profile_photo.jpg")
                 if (tempFile.exists()) {
-                    val savedPath = ImageUtils.saveProfileImage(context, Uri.fromFile(tempFile))
-                    if (savedPath != null) {
-                        onImageSelected(savedPath.toUri())
-                    }
-                    tempFile.delete() // Clean up temp file
+                    onImageSelected(Uri.fromFile(tempFile))
                 }
             }
         }
@@ -718,11 +713,8 @@ internal fun UpdateProfilePictureBottomSheet(
             contract = ActivityResultContracts.GetContent()
         ) { uri ->
             uri?.let { selectedUri ->
-                // Save the image to local storage
-                val savedPath = ImageUtils.saveProfileImage(context, selectedUri)
-                if (savedPath != null) {
-                    onImageSelected(savedPath.toUri())
-                }
+                // Pass the original URI to the cropper.
+                onImageSelected(selectedUri)
             }
         }
 

@@ -97,6 +97,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.exifinterface)
 
     // Compose BOM (Bill of Materials) - Use the latest stable version
     implementation(platform(libs.compose.bom))
