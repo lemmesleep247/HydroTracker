@@ -20,7 +20,7 @@ import com.cemcakmak.hydrotracker.data.models.ThemePreferences
 import com.cemcakmak.hydrotracker.data.models.DarkModePreference
 import com.cemcakmak.hydrotracker.data.models.ColorSource
 
-// HydroTracker Light Color Scheme
+// HydroTracker Light Colour Scheme
 private val HydroLightColorScheme = lightColorScheme(
     primary = md_theme_light_primary,
     onPrimary = md_theme_light_onPrimary,
@@ -50,7 +50,7 @@ private val HydroLightColorScheme = lightColorScheme(
     inversePrimary = md_theme_light_inversePrimary,
 )
 
-// HydroTracker Dark Color Scheme
+// HydroTracker Dark Colour Scheme
 private val HydroDarkColorScheme = darkColorScheme(
     primary = md_theme_dark_primary,
     onPrimary = md_theme_dark_onPrimary,
@@ -94,7 +94,7 @@ fun HydroTrackerTheme(
         DarkModePreference.DARK -> true
     }
 
-    // Choose color scheme based on user preference
+    // Choose colour scheme based on user preference
     val baseColorScheme = when (themePreferences.colorSource) {
         ColorSource.DYNAMIC_COLOR -> {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -105,9 +105,6 @@ fun HydroTrackerTheme(
         }
 
         ColorSource.HYDRO_THEME -> {
-            if (darkTheme) HydroDarkColorScheme else HydroLightColorScheme
-        }
-        else -> {
             if (darkTheme) HydroDarkColorScheme else HydroLightColorScheme
         }
     }
@@ -127,7 +124,7 @@ fun HydroTrackerTheme(
         hydroTypography(fontFamilyFor(themePreferences.appFont))
     }
 
-    // Keep the system bar icon colors in sync with the theme. The activity is no longer
+    // Keep the system bar icon colours in sync with the theme. The activity is no longer
     // recreated on a theme change (configChanges), so enableEdgeToEdge() in onCreate can't
     // refresh this — drive it reactively here instead.
     val view = LocalView.current
