@@ -284,6 +284,14 @@ fun HydroTrackerApp(
             val backStack = rememberNavBackStack(startKey)
             val currentKey = backStack.lastOrNull() as? NavigationRoutes ?: startKey
             val snackbarHostState = remember { SnackbarHostState() }
+
+            // Shared onboarding ViewModel so the cropper can update it.
+            val onboardingViewModel: OnboardingViewModel = viewModel(
+                factory = OnboardingViewModelFactory(
+                    LocalContext.current.applicationContext as Application,
+                    userRepository
+                )
+            )
             var homeShowCustomDialog by remember { mutableStateOf(false) }
             var homeFabExpanded by remember { mutableStateOf(true) }
 
@@ -415,11 +423,6 @@ fun HydroTrackerApp(
                     },
                     entryProvider = entryProvider {
                         entry<NavigationRoutes.Onboarding> {
-                            val ctx = LocalContext.current
-                            val onboardingVM: OnboardingViewModel = viewModel(
-                                factory = OnboardingViewModelFactory(ctx.applicationContext as Application, userRepository)
-                            )
-
                             OnboardingScreen(
                                 onNavigateToHome = {
                                     backStack.apply {
@@ -427,8 +430,17 @@ fun HydroTrackerApp(
                                         add(NavigationRoutes.Home)
                                     }
                                 },
+                                onNavigateToCrop = { uri ->
+                                    wasPop = true
+                                    backStack.add(
+                                        NavigationRoutes.CropProfileImage(
+                                            sourceUri = uri.toString(),
+                                            caller = NavigationRoutes.CropCaller.ONBOARDING
+                                        )
+                                    )
+                                },
                                 themePreferences = themePreferences,
-                                viewModel = onboardingVM
+                                viewModel = onboardingViewModel
                             )
                         }
 
@@ -698,7 +710,12 @@ fun HydroTrackerApp(
                                         todayGoalProgress = todayStatistics.goalProgress,
                                         onNavigateToCrop = { uri ->
                                             wasPop = true
-                                            backStack.add(NavigationRoutes.CropProfileImage(uri.toString()))
+                                            backStack.add(
+                                                NavigationRoutes.CropProfileImage(
+                                                    sourceUri = uri.toString(),
+                                                    caller = NavigationRoutes.CropCaller.PROFILE_SETTINGS
+                                                )
+                                            )
                                         },
                                         onNavigateBack = popBackStack
                                     )
@@ -707,14 +724,29 @@ fun HydroTrackerApp(
                         }
 
                         entry<NavigationRoutes.CropProfileImage> { route ->
-                            userProfile?.let { profile ->
-                                CropProfileImageScreen(
-                                    sourceUri = route.sourceUri.toUri(),
-                                    userProfile = profile,
-                                    userRepository = userRepository,
-                                    onNavigateBack = popBackStack
-                                )
-                            } ?: LoadingScreen()
+                            val scope = rememberCoroutineScope()
+
+                            CropProfileImageScreen(
+                                sourceUri = route.sourceUri.toUri(),
+                                onCropCompleted = { croppedUri ->
+                                    when (route.caller) {
+                                        NavigationRoutes.CropCaller.PROFILE_SETTINGS -> {
+                                            userProfile?.let { profile ->
+                                                scope.launch {
+                                                    userRepository.saveUserProfile(
+                                                        profile.copy(profileImagePath = croppedUri?.toString())
+                                                    )
+                                                }
+                                            }
+                                        }
+                                        NavigationRoutes.CropCaller.ONBOARDING -> {
+                                            onboardingViewModel.updateProfileImage(croppedUri)
+                                        }
+                                    }
+                                    popBackStack()
+                                },
+                                onNavigateBack = popBackStack
+                            )
                         }
 
                         entry<NavigationRoutes.HealthConnectData> {

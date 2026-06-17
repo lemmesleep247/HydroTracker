@@ -28,5 +28,14 @@ sealed interface NavigationRoutes : NavKey {
     @Serializable data object SettingsProfile : NavigationRoutes
 
     @Serializable
-    data class CropProfileImage(val sourceUri: String) : NavigationRoutes
+    enum class CropCaller {
+        PROFILE_SETTINGS,
+        ONBOARDING
+    }
+
+    @Serializable
+    data class CropProfileImage(
+        val sourceUri: String,
+        val caller: CropCaller
+    ) : NavigationRoutes
 }

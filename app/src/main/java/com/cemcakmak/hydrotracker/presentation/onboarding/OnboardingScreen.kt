@@ -1,5 +1,6 @@
 package com.cemcakmak.hydrotracker.presentation.onboarding
 
+import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
@@ -40,6 +41,7 @@ enum class OnboardingStep {
 @Composable
 fun OnboardingScreen(
     onNavigateToHome: () -> Unit = {},
+    onNavigateToCrop: (Uri) -> Unit = {},
     themePreferences: ThemePreferences = ThemePreferences(),
     viewModel: OnboardingViewModel = viewModel()
 ) {
@@ -206,6 +208,7 @@ fun OnboardingScreen(
                         profileImageUri = userProfile.profileImagePath?.toUri(),
                         onNameChanged = { viewModel.updateName(it) },
                         onImageSelected = { uri -> viewModel.updateProfileImage(uri) },
+                        onNavigateToCrop = onNavigateToCrop,
                         title = stringResource(viewModel.getStepTitleRes()),
                         description = stringResource(viewModel.getStepDescriptionRes())
                     )
@@ -261,7 +264,8 @@ fun OnboardingScreen(
 fun OnboardingScreenPreview() {
     HydroTrackerTheme {
         OnboardingScreen(
-            onNavigateToHome = {}
+            onNavigateToHome = {},
+            onNavigateToCrop = {}
         )
     }
 }

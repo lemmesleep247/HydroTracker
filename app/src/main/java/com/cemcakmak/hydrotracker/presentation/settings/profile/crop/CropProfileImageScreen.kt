@@ -1,5 +1,6 @@
 package com.cemcakmak.hydrotracker.presentation.settings.profile.crop
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -70,28 +71,27 @@ import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.zIndex
 import com.cemcakmak.hydrotracker.R
-import com.cemcakmak.hydrotracker.data.models.UserProfile
-import com.cemcakmak.hydrotracker.data.repository.UserRepository
 import com.cemcakmak.hydrotracker.ui.theme.HydroTrackerTheme
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
+import androidx.core.net.toUri
 
 /**
  * Full-screen circular cropper for profile pictures.
  *
  * The user can pinch to zoom, drag to pan, double-tap to toggle zoom, rotate
  * 90°, reset the transform, and confirm the crop. The cropped image is saved
- * as a 1024×1024 WebP file and the profile is updated immediately.
+ * as a 1024×1024 WebP file and the resulting URI is delivered to
+ * [onCropCompleted].
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CropProfileImageScreen(
     sourceUri: Uri,
-    userProfile: UserProfile,
-    userRepository: UserRepository,
+    onCropCompleted: (Uri?) -> Unit,
     onNavigateBack: () -> Unit
 ) {
     val context = LocalContext.current
@@ -157,9 +157,7 @@ fun CropProfileImageScreen(
                     context = context,
                     scope = scope,
                     state = it,
-                    userProfile = userProfile,
-                    userRepository = userRepository,
-                    onNavigateBack = onNavigateBack
+                    onCropCompleted = onCropCompleted
                 )
             }
         }
@@ -400,13 +398,12 @@ private fun CropOverlay(
     )
 }
 
+@SuppressLint("UseKtx")
 private fun cropAndSave(
     context: Context,
     scope: CoroutineScope,
     state: CropImageState,
-    userProfile: UserProfile,
-    userRepository: UserRepository,
-    onNavigateBack: () -> Unit
+    onCropCompleted: (Uri?) -> Unit
 ) {
     state.isProcessing = true
 
@@ -418,18 +415,14 @@ private fun cropAndSave(
             state.isProcessing = false
 
             if (path != null) {
-                scope.launch {
-                    userRepository.saveUserProfile(
-                        userProfile.copy(profileImagePath = path)
-                    )
-                    onNavigateBack()
-                }
+                onCropCompleted(path.toUri())
             } else {
                 Toast.makeText(
                     context,
                     R.string.error_saving_image,
                     Toast.LENGTH_SHORT
                 ).show()
+                onCropCompleted(null)
             }
         }
     }

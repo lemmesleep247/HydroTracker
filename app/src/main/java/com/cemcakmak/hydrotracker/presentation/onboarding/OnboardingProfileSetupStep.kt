@@ -40,6 +40,7 @@ fun ProfileSetupStep(
     profileImageUri: Uri? = null,
     onNameChanged: (String) -> Unit,
     onImageSelected: (Uri?) -> Unit,
+    onNavigateToCrop: (Uri) -> Unit,
     title: String,
     description: String
 ) {
@@ -52,14 +53,10 @@ fun ProfileSetupStep(
         contract = ActivityResultContracts.TakePicture()
     ) { success ->
         if (success) {
-            // The camera image was saved to a temporary file, now save it properly
+            // Pass the temporary file URI to the cropper.
             val tempFile = File(context.cacheDir, "temp_profile_photo.jpg")
             if (tempFile.exists()) {
-                val savedPath = ImageUtils.saveProfileImage(context, Uri.fromFile(tempFile))
-                if (savedPath != null) {
-                    onImageSelected(Uri.parse(savedPath))
-                }
-                tempFile.delete() // Clean up temp file
+                onNavigateToCrop(Uri.fromFile(tempFile))
             }
         }
         showBottomSheet = false
@@ -86,11 +83,8 @@ fun ProfileSetupStep(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
         uri?.let { selectedUri ->
-            // Save the image to local storage
-            val savedPath = ImageUtils.saveProfileImage(context, selectedUri)
-            if (savedPath != null) {
-                onImageSelected(Uri.parse(savedPath))
-            }
+            // Pass the original URI to the cropper.
+            onNavigateToCrop(selectedUri)
         }
         showBottomSheet = false
     }
@@ -124,7 +118,7 @@ fun ProfileSetupStep(
                                 } else {
                                     ImageUtils.loadProfileImageBitmap(context)
                                 }
-                            } catch (e: Exception) {
+                            } catch (_: Exception) {
                                 null
                             }
                         }
@@ -353,6 +347,7 @@ fun ProfileSetupStepPreview() {
         profileImageUri = imageUri,
         onNameChanged = { name = it },
         onImageSelected = { imageUri = it },
+        onNavigateToCrop = { imageUri = it },
         title = "Complete Your Profile",
         description = "Add your name and a profile photo to personalize your experience."
     )
