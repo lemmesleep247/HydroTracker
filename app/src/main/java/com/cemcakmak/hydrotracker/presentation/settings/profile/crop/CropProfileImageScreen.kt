@@ -177,6 +177,11 @@ private fun CropProfileImageContent(
     onDone: () -> Unit
 ) {
     val haptics = LocalHapticFeedback.current
+    val saveLabel = stringResource(R.string.crop_save)
+    val cancelLabel = stringResource(R.string.crop_cancel)
+    val rotateLeftLabel = stringResource(R.string.crop_rotate_left)
+    val rotateRightLabel = stringResource(R.string.crop_rotate_right)
+    val resetLabel = stringResource(R.string.crop_reset)
 
     Scaffold(
         topBar = {
@@ -208,16 +213,19 @@ private fun CropProfileImageContent(
                                 PlainTooltip(
                                     modifier = Modifier.semantics {
                                         liveRegion = LiveRegionMode.Assertive
-                                        paneTitle = "Localized description"
+                                        paneTitle = saveLabel
                                     }
                                 ) {
-                                    Text("Localized description")
+                                    Text(saveLabel)
                                 }
                             },
                             state = rememberTooltipState(),
                         ) {
                             FloatingToolbarDefaults.StandardFloatingActionButton(
-                                onClick = onDone
+                                onClick = {
+                                    onDone()
+                                    haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                                }
                             ) {
                                 Icon(
                                     imageVector = ImageVector.vectorResource(R.drawable.save_fill),
@@ -238,16 +246,21 @@ private fun CropProfileImageContent(
                                     modifier =
                                         Modifier.semantics {
                                             liveRegion = LiveRegionMode.Assertive
-                                            paneTitle = "Localized description"
+                                            paneTitle = cancelLabel
                                         }
                                 ) {
-                                    Text("Localized description")
+                                    Text(cancelLabel)
                                 }
                             },
                             state = rememberTooltipState(),
                         ) {
-                            IconButton(onClick = onCancel) {
-                                Icon(imageVector = ImageVector.vectorResource(R.drawable.cancel_filled), contentDescription = "Localized description")
+                            IconButton(
+                                onClick = {
+                                    onCancel()
+                                    haptics.performHapticFeedback(HapticFeedbackType.Reject)
+                                }
+                            ) {
+                                Icon(imageVector = ImageVector.vectorResource(R.drawable.cancel_filled), contentDescription = cancelLabel)
                             }
                         }
                         TooltipBox(
@@ -260,16 +273,21 @@ private fun CropProfileImageContent(
                                     modifier =
                                         Modifier.semantics {
                                             liveRegion = LiveRegionMode.Assertive
-                                            paneTitle = "Localized description"
+                                            paneTitle = rotateLeftLabel
                                         }
                                 ) {
-                                    Text("Localized description")
+                                    Text(rotateLeftLabel)
                                 }
                             },
                             state = rememberTooltipState(),
                         ) {
-                            IconButton(onClick = onRotateLeft) {
-                                Icon(imageVector = ImageVector.vectorResource(R.drawable.rotate_90_degrees_ccw_filled), contentDescription = "Localized description")
+                            IconButton(
+                                onClick = {
+                                    onRotateLeft()
+                                    haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                                }
+                            ) {
+                                Icon(imageVector = ImageVector.vectorResource(R.drawable.rotate_90_degrees_ccw_filled), contentDescription = rotateLeftLabel)
                             }
                         }
                         TooltipBox(
@@ -282,18 +300,23 @@ private fun CropProfileImageContent(
                                     modifier =
                                         Modifier.semantics {
                                             liveRegion = LiveRegionMode.Assertive
-                                            paneTitle = "Localized description"
+                                            paneTitle = rotateRightLabel
                                         }
                                 ) {
-                                    Text("Localized description")
+                                    Text(rotateRightLabel)
                                 }
                             },
                             state = rememberTooltipState(),
                         ) {
-                            IconButton(onClick = onRotateRight) {
+                            IconButton(
+                                onClick = {
+                                    onRotateRight()
+                                    haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                                }
+                            ) {
                                 Icon(
                                     imageVector = ImageVector.vectorResource(R.drawable.rotate_90_degrees_cw_filled),
-                                    contentDescription = "Localized description",
+                                    contentDescription = rotateRightLabel,
                                 )
                             }
                         }
@@ -307,18 +330,23 @@ private fun CropProfileImageContent(
                                     modifier =
                                         Modifier.semantics {
                                             liveRegion = LiveRegionMode.Assertive
-                                            paneTitle = "Localized description"
+                                            paneTitle = resetLabel
                                         }
                                 ) {
-                                    Text("Localized description")
+                                    Text(resetLabel)
                                 }
                             },
                             state = rememberTooltipState(),
                         ) {
-                            IconButton(onClick = onReset) {
+                            IconButton(
+                                onClick = {
+                                    onReset()
+                                    haptics.performHapticFeedback(HapticFeedbackType.Reject)
+                                }
+                            ) {
                                 Icon(
                                     imageVector = ImageVector.vectorResource(R.drawable.refresh_filled),
-                                    contentDescription = "Localized description",
+                                    contentDescription = resetLabel,
                                 )
                             }
                         }
@@ -428,7 +456,7 @@ private fun cropAndSave(
     }
 }
 
-@Preview(device = "spec:width=411dp,height=891dp", showSystemUi = true)
+@Preview
 @Composable
 private fun CropProfileImageScreenPreview() {
     HydroTrackerTheme {

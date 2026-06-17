@@ -1074,9 +1074,12 @@
 
     <!-- Profile photo cropper -->
     <string name="profile_crop_title">Crop Profile Photo</string>
+    <string name="crop_save">Save</string>
+    <string name="crop_cancel">Cancel</string>
+    <string name="crop_rotate_left">Rotate left 90 degrees</string>
+    <string name="crop_rotate_right">Rotate right 90 degrees</string>
+    <string name="crop_reset">Reset</string>
     <string name="cd_crop_image">Photo to crop</string>
-    <string name="cd_rotate_left">Rotate counter-clockwise</string>
-    <string name="cd_rotate_right">Rotate clockwise</string>
     <string name="error_loading_image">Could not load image</string>
     <string name="error_saving_image">Could not save cropped image</string>
 
