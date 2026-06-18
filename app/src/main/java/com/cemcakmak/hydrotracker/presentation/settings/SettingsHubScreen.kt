@@ -178,7 +178,7 @@ fun SettingsHubScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(top = 16.dp + innerPadding.calculateTopPadding())
+                .padding(top = innerPadding.calculateTopPadding())
                 .padding(horizontal = 16.dp)
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)

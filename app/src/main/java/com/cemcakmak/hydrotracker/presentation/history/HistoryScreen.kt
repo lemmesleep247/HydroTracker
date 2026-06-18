@@ -23,8 +23,6 @@ package com.cemcakmak.hydrotracker.presentation.history
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -40,9 +38,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.annotation.StringRes
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.res.vectorResource
 import com.cemcakmak.hydrotracker.R
 import com.cemcakmak.hydrotracker.ui.theme.HydroTrackerTheme
-import com.cemcakmak.hydrotracker.data.database.repository.WaterIntakeRepository
 import com.cemcakmak.hydrotracker.data.database.entities.DailySummary
 import com.cemcakmak.hydrotracker.data.models.DateFormatPattern
 import com.cemcakmak.hydrotracker.data.models.UserProfile
@@ -59,32 +59,36 @@ import java.time.temporal.WeekFields
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun HistoryScreen(
-    waterIntakeRepository: WaterIntakeRepository,
-    themePreferences: ThemePreferences = ThemePreferences(),
-    userProfile: UserProfile? = null,
-    paddingValues: PaddingValues
-) {
-    // Collect ALL historical data from repository
-    val allSummaries by waterIntakeRepository.getAllSummaries().collectAsState(
-        initial = emptyList()
-    )
-
-    HistoryScreenContent(
-        summaries = allSummaries,
-        themePreferences = themePreferences,
-        userProfile = userProfile,
-        paddingValues = paddingValues
-    )
-}
-
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
-@Composable
-private fun HistoryScreenContent(
     summaries: List<DailySummary>,
     themePreferences: ThemePreferences = ThemePreferences(),
-    userProfile: UserProfile? = null,
-    paddingValues: PaddingValues
+    userProfile: UserProfile? = null
 ) {
+    val haptics = LocalHapticFeedback.current
+
+    val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
+
+    // Scroll haptic logic
+    var historyWasExpanded by remember { mutableStateOf(true) }
+    var historyWasCollapsed by remember { mutableStateOf(false) }
+
+    LaunchedEffect(scrollBehavior.state) {
+        snapshotFlow { scrollBehavior.state.collapsedFraction }
+            .collect { fraction ->
+                val isExpanded = fraction == 0f
+                val isCollapsed = fraction == 1f
+
+                if (isExpanded && !historyWasExpanded) {
+                    haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+                }
+                if (isCollapsed && !historyWasCollapsed) {
+                    haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+                }
+
+                historyWasExpanded = isExpanded
+                historyWasCollapsed = isCollapsed
+            }
+    }
+
     val volumeUnit = userProfile?.volumeUnit ?: VolumeUnit.MILLILITRES
     // State for different time periods
     var selectedPeriod by remember { mutableStateOf(TimePeriod.WEEKLY) }
@@ -94,61 +98,76 @@ private fun HistoryScreenContent(
     var currentMonthOffset by remember { mutableIntStateOf(0) } // 0 = current month, -1 = previous month, etc.
     var currentYearOffset by remember { mutableIntStateOf(0) } // 0 = current year, -1 = previous year, etc.
 
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(paddingValues),
-        contentPadding = PaddingValues(16.dp),
-    ) {
-        // Period Selector
-        item {
-            PeriodSelector(
-                selectedPeriod = selectedPeriod,
-                onPeriodSelected = {
-                    selectedPeriod = it
-                    // Reset navigation when switching between periods
-                    currentWeekOffset = 0
-                    currentMonthOffset = 0
-                    currentYearOffset = 0
-                },
-                currentWeekOffset = currentWeekOffset,
-                currentMonthOffset = currentMonthOffset,
-                currentYearOffset = currentYearOffset,
-                onWeekOffsetChanged = { currentWeekOffset = it },
-                onMonthOffsetChanged = { currentMonthOffset = it },
-                onYearOffsetChanged = { currentYearOffset = it },
-                weekStartDay = themePreferences.weekStartDay,
-                dateFormat = themePreferences.dateFormat
-            )
-        }
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            modifier = Modifier
+                .nestedScroll(scrollBehavior.nestedScrollConnection),
+            topBar = {
+                LargeFlexibleTopAppBar(
+                    title = { Text(stringResource(R.string.nav_history)) },
+                    scrollBehavior = scrollBehavior,
+                    colors = TopAppBarDefaults.topAppBarColors(
+                        scrolledContainerColor = MaterialTheme.colorScheme.surface
+                    )
+                )
+            }
+        ) { innerPadding ->
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+            ) {
+                // Period Selector
+                item {
+                    PeriodSelector(
+                        selectedPeriod = selectedPeriod,
+                        onPeriodSelected = {
+                            selectedPeriod = it
+                            // Reset navigation when switching between periods
+                            currentWeekOffset = 0
+                            currentMonthOffset = 0
+                            currentYearOffset = 0
+                        },
+                        currentWeekOffset = currentWeekOffset,
+                        currentMonthOffset = currentMonthOffset,
+                        currentYearOffset = currentYearOffset,
+                        onWeekOffsetChanged = { currentWeekOffset = it },
+                        onMonthOffsetChanged = { currentMonthOffset = it },
+                        onYearOffsetChanged = { currentYearOffset = it },
+                        weekStartDay = themePreferences.weekStartDay,
+                        dateFormat = themePreferences.dateFormat
+                    )
+                }
 
-        // Main Chart Section
-        item {
-            when (selectedPeriod) {
-                TimePeriod.WEEKLY -> {
-                    WeeklyChartSection(
-                        weekOffset = currentWeekOffset,
-                        summaries = summaries,
-                        weekStartDay = themePreferences.weekStartDay,
-                        volumeUnit = volumeUnit,
-                        dateFormat = themePreferences.dateFormat
-                    )
-                }
-                TimePeriod.MONTHLY -> {
-                    MonthlyChartSection(
-                        summaries = summaries,
-                        monthOffset = currentMonthOffset,
-                        weekStartDay = themePreferences.weekStartDay,
-                        volumeUnit = volumeUnit,
-                        dateFormat = themePreferences.dateFormat
-                    )
-                }
-                TimePeriod.YEARLY -> {
-                    YearlyChartSection(
-                        summaries = summaries,
-                        yearOffset = currentYearOffset,
-                        volumeUnit = volumeUnit
-                    )
+                // Main Chart Section
+                item {
+                    when (selectedPeriod) {
+                        TimePeriod.WEEKLY -> {
+                            WeeklyChartSection(
+                                weekOffset = currentWeekOffset,
+                                summaries = summaries,
+                                weekStartDay = themePreferences.weekStartDay,
+                                volumeUnit = volumeUnit,
+                                dateFormat = themePreferences.dateFormat
+                            )
+                        }
+                        TimePeriod.MONTHLY -> {
+                            MonthlyChartSection(
+                                summaries = summaries,
+                                monthOffset = currentMonthOffset,
+                                weekStartDay = themePreferences.weekStartDay,
+                                volumeUnit = volumeUnit,
+                                dateFormat = themePreferences.dateFormat
+                            )
+                        }
+                        TimePeriod.YEARLY -> {
+                            YearlyChartSection(
+                                summaries = summaries,
+                                yearOffset = currentYearOffset,
+                                volumeUnit = volumeUnit
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -175,114 +194,105 @@ private fun PeriodSelector(
     weekStartDay: WeekStartDay,
     dateFormat: DateFormatPattern
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            // Period Type Selection with ToggleButton
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                TimePeriod.entries.forEach { period ->
-                    val isSelected = selectedPeriod == period
+        val haptics = LocalHapticFeedback.current
 
-                    val haptics = LocalHapticFeedback.current
-                    
-                    ToggleButton(
-                        checked = isSelected,
-                        onCheckedChange = { onPeriodSelected(period)
-                            haptics.performHapticFeedback(HapticFeedbackType.ToggleOn)},
-                        modifier = Modifier.weight(1f)
+        // Period Type Selection with ToggleButton
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            TimePeriod.entries.forEach { period ->
+                val isSelected = selectedPeriod == period
+
+                ToggleButton(
+                    modifier = Modifier.weight(1f),
+                    checked = isSelected,
+                    onCheckedChange = { onPeriodSelected(period)
+                        haptics.performHapticFeedback(HapticFeedbackType.ToggleOn)}
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = stringResource(period.displayNameResId),
-                                style = MaterialTheme.typography.labelLargeEmphasized
-                            )
-                        }
+                        Text(
+                            text = stringResource(period.displayNameResId),
+                            style = MaterialTheme.typography.labelLarge
+                        )
                     }
                 }
             }
+        }
 
-            // Haptic feedback for button clicks
-            val haptics = LocalHapticFeedback.current
-            
-            // Navigation Controls
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                FilledIconButton(
-                    onClick = {
-                        when (selectedPeriod) {
-                            TimePeriod.WEEKLY -> onWeekOffsetChanged(currentWeekOffset - 1)
-                            TimePeriod.MONTHLY -> onMonthOffsetChanged(currentMonthOffset - 1)
-                            TimePeriod.YEARLY -> onYearOffsetChanged(currentYearOffset - 1)
-                        }
-                        haptics.performHapticFeedback(HapticFeedbackType.Confirm)
-                    },
-                    shapes = IconButtonDefaults.shapes(),
-                    colors = IconButtonDefaults.filledIconButtonColors()
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                        contentDescription = stringResource(
-                            R.string.cd_previous_period,
-                            stringResource(selectedPeriod.displayNameResId)
-                        )
-                    )
-                }
-                
-                Text(
-                    text = getCurrentPeriodText(
-                        selectedPeriod,
-                        currentWeekOffset,
-                        currentMonthOffset,
-                        currentYearOffset,
-                        weekStartDay,
-                        dateFormat
-                    ),
-                    style = MaterialTheme.typography.titleMediumEmphasized,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    textAlign = TextAlign.Center
-                )
-                
-                IconButton(
-                    onClick = {
-                        when (selectedPeriod) {
-                            TimePeriod.WEEKLY -> onWeekOffsetChanged(currentWeekOffset + 1)
-                            TimePeriod.MONTHLY -> onMonthOffsetChanged(currentMonthOffset + 1)
-                            TimePeriod.YEARLY -> onYearOffsetChanged(currentYearOffset + 1)
-                        }
-                        haptics.performHapticFeedback(HapticFeedbackType.Confirm)
-                    },
-                    shapes = IconButtonDefaults.shapes(),
-                    colors = IconButtonDefaults.filledIconButtonColors(),
-                    enabled = when (selectedPeriod) {
-                        TimePeriod.WEEKLY -> currentWeekOffset < 0
-                        TimePeriod.MONTHLY -> currentMonthOffset < 0
-                        TimePeriod.YEARLY -> currentYearOffset < 0
+        // Navigation Controls
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            FilledIconButton(
+                onClick = {
+                    when (selectedPeriod) {
+                        TimePeriod.WEEKLY -> onWeekOffsetChanged(currentWeekOffset - 1)
+                        TimePeriod.MONTHLY -> onMonthOffsetChanged(currentMonthOffset - 1)
+                        TimePeriod.YEARLY -> onYearOffsetChanged(currentYearOffset - 1)
                     }
-                ) {
-                    Icon(
-                        imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                        contentDescription = stringResource(
-                            R.string.cd_next_period,
-                            stringResource(selectedPeriod.displayNameResId)
-                        )
+                    haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+                },
+                shapes = IconButtonDefaults.shapes(),
+                colors = IconButtonDefaults.filledIconButtonColors()
+            ) {
+                Icon(
+                    imageVector = ImageVector.vectorResource(R.drawable.arrow_back_filled),
+                    contentDescription = stringResource(
+                        R.string.cd_previous_period,
+                        stringResource(selectedPeriod.displayNameResId)
                     )
+                )
+            }
+
+            Text(
+                text = getCurrentPeriodText(
+                    selectedPeriod,
+                    currentWeekOffset,
+                    currentMonthOffset,
+                    currentYearOffset,
+                    weekStartDay,
+                    dateFormat
+                ),
+                style = MaterialTheme.typography.titleMediumEmphasized,
+                textAlign = TextAlign.Center
+            )
+
+            IconButton(
+                onClick = {
+                    when (selectedPeriod) {
+                        TimePeriod.WEEKLY -> onWeekOffsetChanged(currentWeekOffset + 1)
+                        TimePeriod.MONTHLY -> onMonthOffsetChanged(currentMonthOffset + 1)
+                        TimePeriod.YEARLY -> onYearOffsetChanged(currentYearOffset + 1)
+                    }
+                    haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+                },
+                shapes = IconButtonDefaults.shapes(),
+                colors = IconButtonDefaults.filledIconButtonColors(),
+                enabled = when (selectedPeriod) {
+                    TimePeriod.WEEKLY -> currentWeekOffset < 0
+                    TimePeriod.MONTHLY -> currentMonthOffset < 0
+                    TimePeriod.YEARLY -> currentYearOffset < 0
                 }
+            ) {
+                Icon(
+                    imageVector = ImageVector.vectorResource(R.drawable.arrow_forward_filled),
+                    contentDescription = stringResource(
+                        R.string.cd_next_period,
+                        stringResource(selectedPeriod.displayNameResId)
+                    )
+                )
             }
         }
     }
@@ -537,7 +547,7 @@ internal fun filterSummariesByPeriod(
 
 @Preview(showBackground = true, name = "History Screen")
 @Composable
-private fun HistoryScreenContentPreview() {
+private fun HistoryScreenPreview() {
     val today = LocalDate.now()
     val dailyGoal = 2700.0
     val sampleSummaries = List(35) { index ->
@@ -567,9 +577,8 @@ private fun HistoryScreenContentPreview() {
     }
 
     HydroTrackerTheme {
-        HistoryScreenContent(
-            summaries = sampleSummaries,
-            paddingValues = PaddingValues(0.dp)
+        HistoryScreen(
+            summaries = sampleSummaries
         )
     }
 }

@@ -33,7 +33,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.material3.TooltipDefaults
-import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.material3.rememberTopAppBarState
@@ -51,7 +50,6 @@ import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavBackStack
@@ -127,7 +125,6 @@ fun MainNavigationScaffold(
                         userProfile = userProfile,
                         waterIntakeRepository = waterIntakeRepository
                     )
-                    NavigationRoutes.History -> HistoryTopAppBar()
                     else -> {}
                 }
             }
@@ -182,19 +179,6 @@ fun MainNavigationScaffold(
     ) { paddingValues ->
         content(paddingValues)
     }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun HistoryTopAppBar() {
-    TopAppBar(
-        title = {
-            Text(
-                text = stringResource(R.string.history_title),
-                fontWeight = FontWeight.Bold
-            )
-        }
-    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)

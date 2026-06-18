@@ -462,11 +462,13 @@ fun HydroTrackerApp(
                         }
 
                         entry<NavigationRoutes.History> {
+                            val historySummaries by waterIntakeRepository.getAllSummaries().collectAsState(
+                                initial = emptyList()
+                            )
                             HistoryScreen(
-                                waterIntakeRepository = waterIntakeRepository,
+                                summaries = historySummaries,
                                 themePreferences = themePreferences,
-                                userProfile = userProfile,
-                                paddingValues = paddingValues
+                                userProfile = userProfile
                             )
                         }
 
