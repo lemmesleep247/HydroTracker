@@ -1,5 +1,6 @@
 package com.cemcakmak.hydrotracker.ui.theme
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -19,6 +20,10 @@ import androidx.core.view.WindowCompat
 import com.cemcakmak.hydrotracker.data.models.ThemePreferences
 import com.cemcakmak.hydrotracker.data.models.DarkModePreference
 import com.cemcakmak.hydrotracker.data.models.ColorSource
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.graphics.toArgb
+import com.google.android.material.color.MaterialColors
+import com.google.android.material.color.utilities.TonalPalette
 
 // HydroTracker Light Colour Scheme
 private val HydroLightColorScheme = lightColorScheme(
@@ -80,6 +85,66 @@ private val HydroDarkColorScheme = darkColorScheme(
     inversePrimary = md_theme_dark_inversePrimary,
 )
 
+// Seed colours for the extended palettes.
+private val SuccessSeed = Color(0xFF1E8E3E)
+private val WarningSeed = Color(0xFFFF9500)
+
+private data class CustomColorRoles(
+    val color: Color,
+    val onColor: Color,
+    val colorContainer: Color,
+    val onColorContainer: Color
+)
+
+private fun Color.harmonizedWith(primary: Color): Color {
+    val harmonizedArgb = MaterialColors.harmonize(this.toArgb(), primary.toArgb())
+    return Color(harmonizedArgb)
+}
+
+@SuppressLint("RestrictedApi")
+private fun TonalPalette.toLightRoles() = CustomColorRoles(
+    color = Color(tone(40)),
+    onColor = Color(tone(100)),
+    colorContainer = Color(tone(90)),
+    onColorContainer = Color(tone(10))
+)
+
+@SuppressLint("RestrictedApi")
+private fun TonalPalette.toDarkRoles() = CustomColorRoles(
+    color = Color(tone(80)),
+    onColor = Color(tone(20)),
+    colorContainer = Color(tone(30)),
+    onColorContainer = Color(tone(90))
+)
+
+@SuppressLint("RestrictedApi")
+private fun extendedColorScheme(
+    successSeed: Color,
+    warningSeed: Color,
+    primaryColor: Color,
+    isDark: Boolean
+): ExtendedColorScheme {
+    val successHarmonized = successSeed.harmonizedWith(primaryColor)
+    val warningHarmonized = warningSeed.harmonizedWith(primaryColor)
+
+    val successRoles = TonalPalette.fromInt(successHarmonized.toArgb())
+        .let { if (isDark) it.toDarkRoles() else it.toLightRoles() }
+
+    val warningRoles = TonalPalette.fromInt(warningHarmonized.toArgb())
+        .let { if (isDark) it.toDarkRoles() else it.toLightRoles() }
+
+    return ExtendedColorScheme(
+        success = successRoles.color,
+        onSuccess = successRoles.onColor,
+        successContainer = successRoles.colorContainer,
+        onSuccessContainer = successRoles.onColorContainer,
+        warning = warningRoles.color,
+        onWarning = warningRoles.onColor,
+        warningContainer = warningRoles.colorContainer,
+        onWarningContainer = warningRoles.onColorContainer
+    )
+}
+
 @Composable
 fun HydroTrackerTheme(
     themePreferences: ThemePreferences = ThemePreferences(),
@@ -119,6 +184,13 @@ fun HydroTrackerTheme(
         baseColorScheme
     }
 
+    val extendedColors = extendedColorScheme(
+        successSeed = SuccessSeed,
+        warningSeed = WarningSeed,
+        primaryColor = colorScheme.primary,
+        isDark = darkTheme
+    )
+
     // Typography follows the user's selected font, rebuilt only when the font changes
     val typography = remember(themePreferences.appFont) {
         hydroTypography(fontFamilyFor(themePreferences.appFont))
@@ -137,10 +209,12 @@ fun HydroTrackerTheme(
         }
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = typography,
-        motionScheme = MotionScheme.expressive(),
-        content = content
-    )
+    CompositionLocalProvider(LocalExtendedColorScheme provides extendedColors) {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = typography,
+            motionScheme = MotionScheme.expressive(),
+            content = content
+        )
+    }
 }

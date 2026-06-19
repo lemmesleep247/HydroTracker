@@ -73,6 +73,7 @@ import com.cemcakmak.hydrotracker.data.models.VolumeUnit
 import com.cemcakmak.hydrotracker.data.models.WeekStartDay
 import com.cemcakmak.hydrotracker.presentation.common.rememberAnimatedDouble
 import com.cemcakmak.hydrotracker.ui.theme.HydroTrackerTheme
+import com.cemcakmak.hydrotracker.ui.theme.extendedColorScheme
 import com.cemcakmak.hydrotracker.utils.VolumeUnitConverter
 import kotlinx.coroutines.delay
 import java.time.LocalDate
@@ -293,7 +294,7 @@ private fun WeeklyBarChart(
                     val barColor = when {
                         isToday -> MaterialTheme.colorScheme.primary
                         isEmpty -> MaterialTheme.colorScheme.surfaceContainerHighest
-                        isGoalMet -> MaterialTheme.colorScheme.tertiary
+                        isGoalMet -> MaterialTheme.extendedColorScheme.success
                         else -> MaterialTheme.colorScheme.secondary
                     }
 
@@ -311,7 +312,7 @@ private fun WeeklyBarChart(
                     val textColor = when {
                         isToday -> MaterialTheme.colorScheme.onPrimary
                         isEmpty -> MaterialTheme.colorScheme.onSecondary
-                        isGoalMet -> MaterialTheme.colorScheme.onTertiary
+                        isGoalMet -> MaterialTheme.extendedColorScheme.onSuccess
                         else -> MaterialTheme.colorScheme.onSecondary
                     }
 
