@@ -40,8 +40,10 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -51,8 +53,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
@@ -87,7 +94,7 @@ internal fun WeeklyChartSection(
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(16.dp),
+            .padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         val haptics = LocalHapticFeedback.current
@@ -156,8 +163,11 @@ internal fun WeeklyChartSection(
 
             // Period-specific summary
             Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 val totalAmount = filteredDailyTotals.sumOf { it.totalAmount }
                 val daysWithData = filteredDailyTotals.count { it.totalAmount > 0.0 }
@@ -165,29 +175,43 @@ internal fun WeeklyChartSection(
                 val bestAmount = filteredDailyTotals.maxOfOrNull { it.totalAmount } ?: 0.0
 
                 val animatedTotal = rememberAnimatedDouble(
-                    targetValue = totalAmount,
-                    hapticsEnabled = false
+                    targetValue = totalAmount / 1000,   // Convert to litres to not trigger too frequent haptics
+                    hapticsEnabled = true
                 )
                 val animatedAverage = rememberAnimatedDouble(
-                    targetValue = avgAmount,
-                    hapticsEnabled = false
+                    targetValue = avgAmount / 1000,   // Convert to litres to not trigger too frequent haptics
+                    hapticsEnabled = true
                 )
                 val animatedBest = rememberAnimatedDouble(
-                    targetValue = bestAmount,
-                    hapticsEnabled = false
+                    targetValue = bestAmount / 1000,   // Convert to litres to not trigger too frequent haptics
+                    hapticsEnabled = true
                 )
 
                 ChartStatItem(
                     label = stringResource(R.string.history_stat_total),
-                    value = VolumeUnitConverter.format(context, animatedTotal.toDouble(), volumeUnit)
+                    value = VolumeUnitConverter.format(context, animatedTotal.toDouble() * 1000, volumeUnit)   // Convert back to milliliters
                 )
+
+                VerticalDivider(
+                    modifier = Modifier
+                        .height(34.dp)
+                        .width(2.dp)
+                )
+
                 ChartStatItem(
                     label = stringResource(R.string.history_stat_average),
-                    value = VolumeUnitConverter.format(context, animatedAverage.toDouble(), volumeUnit)
+                    value = VolumeUnitConverter.format(context, animatedAverage.toDouble() * 1000, volumeUnit)   // Convert back to milliliters
                 )
+
+                VerticalDivider(
+                    modifier = Modifier
+                        .height(34.dp)
+                        .width(2.dp)
+                )
+
                 ChartStatItem(
                     label = stringResource(R.string.history_stat_best_day),
-                    value = VolumeUnitConverter.format(context, animatedBest.toDouble(), volumeUnit)
+                    value = VolumeUnitConverter.format(context, animatedBest.toDouble() * 1000, volumeUnit)   // Convert back to milliliters
                 )
             }
         } else {
@@ -317,15 +341,36 @@ private fun WeeklyBarChart(
                 }
             }
 
+            // Dashed line values
+            val strokeWidth = 3.dp
+            val dashLength = 6.dp
+            val gapLength = 6.dp
+            val density = LocalDensity.current
+            val strokePx = with(density) { strokeWidth.toPx() }
+            val dashPx = with(density) { dashLength.toPx() }
+            val gapPx = with(density) { gapLength.toPx() }
+
+            val dashColor = MaterialTheme.colorScheme.inverseOnSurface
+
             // Goal line
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(2.dp)
+                    .height(strokeWidth)
                     .align(Alignment.BottomStart)
                     .offset(y = (-animatedGoalLineOffset).dp)
-                    .clip(MaterialTheme.shapes.extraExtraLarge)
-                    .background(MaterialTheme.colorScheme.surfaceContainerHighest)
+                    .drawBehind {
+                        drawLine(
+                            color = dashColor,
+                            start = Offset(0f, size.height / 2),
+                            end = Offset(size.width, size.height / 2),
+                            strokeWidth = strokePx,
+                            cap = StrokeCap.Round,
+                            pathEffect = PathEffect.dashPathEffect(
+                                intervals = floatArrayOf(dashPx, gapPx)
+                            )
+                        )
+                    }
 
             )
         }
