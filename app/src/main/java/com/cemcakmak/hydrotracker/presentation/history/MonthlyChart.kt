@@ -88,7 +88,7 @@ import kotlin.time.Duration.Companion.milliseconds
 @Composable
 internal fun MonthlyChartSection(
     summaries: List<DailySummary>,
-    monthOffset: Int,
+    stats: MonthlyHistoryStats,
     weekStartDay: WeekStartDay = WeekStartDay.SYSTEM,
     volumeUnit: VolumeUnit,
     dateFormat: DateFormatPattern = DateFormatPattern.SYSTEM,
@@ -102,13 +102,11 @@ internal fun MonthlyChartSection(
             .padding(top = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        val filteredSummaries = filterSummariesByPeriod(summaries, TimePeriod.MONTHLY, weekOffset = 0, monthOffset, 0)
-
-        if (filteredSummaries.isNotEmpty()) {
+        if (summaries.isNotEmpty()) {
             val haptics = LocalHapticFeedback.current
             // Monthly heatmap-style visualization
             MonthlyHeatmap(
-                summaries = filteredSummaries,
+                summaries = summaries,
                 onCellClick = { summary -> selectedSummary = summary
                     haptics.performHapticFeedback(HapticFeedbackType.ContextClick)},
                 weekStartDay = weekStartDay,
@@ -152,13 +150,9 @@ internal fun MonthlyChartSection(
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                val totalDays = filteredSummaries.size.toDouble()
-                val goalAchievedDays = filteredSummaries.count { it.goalAchieved }
-                val successRate = (goalAchievedDays / totalDays) * 100.0
-
                 AnimatedStatItem(
                     label = stringResource(R.string.history_stat_days_tracked),
-                    targetValue = totalDays,
+                    targetValue = stats.daysTracked.toDouble(),
                     formatValue = { it.toInt().toString() }
                 )
 
@@ -170,7 +164,7 @@ internal fun MonthlyChartSection(
 
                 AnimatedStatItem(
                     label = stringResource(R.string.history_stat_goals_met),
-                    targetValue = goalAchievedDays.toDouble(),
+                    targetValue = stats.goalsMet.toDouble(),
                     hapticsEnabled = true,
                     formatValue = { it.toInt().toString() }
                 )
@@ -183,7 +177,7 @@ internal fun MonthlyChartSection(
 
                 AnimatedStatItem(
                     label = stringResource(R.string.history_stat_success_rate),
-                    targetValue = successRate,
+                    targetValue = stats.successRate,
                     formatValue = { stringResource(R.string.percent_format, it.toInt()) }
                 )
             }
@@ -471,7 +465,11 @@ private fun MonthlyChartSectionPreview() {
     HydroTrackerTheme {
         MonthlyChartSection(
             summaries = sampleSummaries,
-            monthOffset = 0,
+            stats = MonthlyHistoryStats(
+                daysTracked = sampleSummaries.size,
+                goalsMet = sampleSummaries.count { it.goalAchieved },
+                successRate = (sampleSummaries.count { it.goalAchieved }.toDouble() / sampleSummaries.size) * 100.0
+            ),
             volumeUnit = VolumeUnit.MILLILITRES,
             dateFormat = DateFormatPattern.SYSTEM
         )

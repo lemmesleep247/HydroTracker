@@ -2,17 +2,17 @@
  *
  *  * HydroTracker - A modern and private water intake tracking application
  *  * Copyright (c) 2026 Ali Cem Çakmak
- *  *
+ *
  *  * This program is free software: you can redistribute it and/or modify
  *  * it under the terms of the GNU General Public License as published by
  *  * the Free Software Foundation, either version 3 of the License, or
  *  * (at your option) any later version.
- *  *
+ *
  *  * This program is distributed in the hope that it will be useful,
  *  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  *  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  *  * GNU General Public License for more details.
- *  *
+ *
  *  * You should have received a copy of the GNU General Public License
  *  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  *
@@ -28,6 +28,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.EaseOutCubic
 import androidx.compose.animation.core.animateDp
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
@@ -49,13 +50,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.annotation.StringRes
-import androidx.compose.animation.core.EaseOutCubic
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.vectorResource
 import com.cemcakmak.hydrotracker.R
 import com.cemcakmak.hydrotracker.ui.theme.HydroTrackerTheme
-import com.cemcakmak.hydrotracker.data.database.entities.DailySummary
 import com.cemcakmak.hydrotracker.data.models.DateFormatPattern
 import com.cemcakmak.hydrotracker.data.models.UserProfile
 import com.cemcakmak.hydrotracker.data.models.WeekStartDay
@@ -67,15 +66,17 @@ import com.cemcakmak.hydrotracker.utils.DateTimeFormatters
 import com.cemcakmak.hydrotracker.utils.VolumeUnitConverter
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import java.time.temporal.WeekFields
 
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun HistoryScreen(
-    summaries: List<DailySummary>,
+    uiState: HistoryUiState,
     themePreferences: ThemePreferences = ThemePreferences(),
-    userProfile: UserProfile? = null
+    userProfile: UserProfile? = null,
+    onPeriodSelected: (TimePeriod) -> Unit,
+    onPreviousPeriod: () -> Unit,
+    onNextPeriod: () -> Unit
 ) {
     val haptics = LocalHapticFeedback.current
 
@@ -104,13 +105,6 @@ fun HistoryScreen(
     }
 
     val volumeUnit = userProfile?.volumeUnit ?: VolumeUnit.MILLILITRES
-    // State for different time periods
-    var selectedPeriod by remember { mutableStateOf(TimePeriod.WEEKLY) }
-
-    // Navigation state for current week/month/year
-    var currentWeekOffset by remember { mutableIntStateOf(0) } // 0 = current week, -1 = previous week, etc.
-    var currentMonthOffset by remember { mutableIntStateOf(0) } // 0 = current month, -1 = previous month, etc.
-    var currentYearOffset by remember { mutableIntStateOf(0) } // 0 = current year, -1 = previous year, etc.
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
@@ -134,20 +128,13 @@ fun HistoryScreen(
                 // Period Selector
                 item {
                     PeriodSelector(
-                        selectedPeriod = selectedPeriod,
-                        onPeriodSelected = {
-                            selectedPeriod = it
-                            // Reset navigation when switching between periods
-                            currentWeekOffset = 0
-                            currentMonthOffset = 0
-                            currentYearOffset = 0
-                        },
-                        currentWeekOffset = currentWeekOffset,
-                        currentMonthOffset = currentMonthOffset,
-                        currentYearOffset = currentYearOffset,
-                        onWeekOffsetChanged = { currentWeekOffset = it },
-                        onMonthOffsetChanged = { currentMonthOffset = it },
-                        onYearOffsetChanged = { currentYearOffset = it },
+                        selectedPeriod = uiState.selectedPeriod,
+                        onPeriodSelected = onPeriodSelected,
+                        currentWeekOffset = uiState.weekOffset,
+                        currentMonthOffset = uiState.monthOffset,
+                        currentYearOffset = uiState.yearOffset,
+                        onPreviousPeriod = onPreviousPeriod,
+                        onNextPeriod = onNextPeriod,
                         weekStartDay = themePreferences.weekStartDay,
                         dateFormat = themePreferences.dateFormat
                     )
@@ -156,7 +143,7 @@ fun HistoryScreen(
                 // Main Chart Section
                 item {
                     AnimatedContent(
-                        targetState = selectedPeriod,
+                        targetState = uiState.selectedPeriod,
                         modifier = Modifier.fillMaxWidth(),
                         transitionSpec = {
                             val direction = when {
@@ -193,8 +180,9 @@ fun HistoryScreen(
                             when (period) {
                                 TimePeriod.WEEKLY -> {
                                     WeeklyChartSection(
-                                        weekOffset = currentWeekOffset,
-                                        summaries = summaries,
+                                        weekOffset = uiState.weekOffset,
+                                        summaries = uiState.summaries,
+                                        stats = uiState.weeklyStats,
                                         weekStartDay = themePreferences.weekStartDay,
                                         volumeUnit = volumeUnit,
                                         dateFormat = themePreferences.dateFormat,
@@ -203,8 +191,8 @@ fun HistoryScreen(
                                 }
                                 TimePeriod.MONTHLY -> {
                                     MonthlyChartSection(
-                                        summaries = summaries,
-                                        monthOffset = currentMonthOffset,
+                                        summaries = uiState.summaries,
+                                        stats = uiState.monthlyStats,
                                         weekStartDay = themePreferences.weekStartDay,
                                         volumeUnit = volumeUnit,
                                         dateFormat = themePreferences.dateFormat,
@@ -213,8 +201,8 @@ fun HistoryScreen(
                                 }
                                 TimePeriod.YEARLY -> {
                                     YearlyChartSection(
-                                        summaries = summaries,
-                                        yearOffset = currentYearOffset,
+                                        summaries = uiState.summaries,
+                                        stats = uiState.yearlyStats,
                                         volumeUnit = volumeUnit,
                                         animationDelayMillis = CHART_ANIMATION_DELAY_MILLIS
                                     )
@@ -244,9 +232,8 @@ private fun PeriodSelector(
     currentWeekOffset: Int,
     currentMonthOffset: Int,
     currentYearOffset: Int,
-    onWeekOffsetChanged: (Int) -> Unit,
-    onMonthOffsetChanged: (Int) -> Unit,
-    onYearOffsetChanged: (Int) -> Unit,
+    onPreviousPeriod: () -> Unit,
+    onNextPeriod: () -> Unit,
     weekStartDay: WeekStartDay,
     dateFormat: DateFormatPattern
 ) {
@@ -294,11 +281,7 @@ private fun PeriodSelector(
         ) {
             FilledIconButton(
                 onClick = {
-                    when (selectedPeriod) {
-                        TimePeriod.WEEKLY -> onWeekOffsetChanged(currentWeekOffset - 1)
-                        TimePeriod.MONTHLY -> onMonthOffsetChanged(currentMonthOffset - 1)
-                        TimePeriod.YEARLY -> onYearOffsetChanged(currentYearOffset - 1)
-                    }
+                    onPreviousPeriod()
                     haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
                 },
                 shapes = IconButtonDefaults.shapes(),
@@ -348,11 +331,7 @@ private fun PeriodSelector(
 
             IconButton(
                 onClick = {
-                    when (selectedPeriod) {
-                        TimePeriod.WEEKLY -> onWeekOffsetChanged(currentWeekOffset + 1)
-                        TimePeriod.MONTHLY -> onMonthOffsetChanged(currentMonthOffset + 1)
-                        TimePeriod.YEARLY -> onYearOffsetChanged(currentYearOffset + 1)
-                    }
+                    onNextPeriod()
                     haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
                 },
                 shapes = IconButtonDefaults.shapes(),
@@ -578,56 +557,6 @@ internal fun getCurrentPeriodText(
     }
 }
 
-internal fun getWeekDateRange(weekOffset: Int, weekStartDay: WeekStartDay = WeekStartDay.SYSTEM): Pair<LocalDate, LocalDate> {
-    val today = LocalDate.now()
-    val weekFields = WeekFields.of(weekStartDay.resolve(), 1)
-
-    // Get the start of current week first
-    val currentWeekStart = today.with(weekFields.dayOfWeek(), 1)
-
-    // Then apply the offset to get the target week
-    val targetWeekStart = currentWeekStart.plusWeeks(weekOffset.toLong())
-    val targetWeekEnd = targetWeekStart.plusDays(6)
-
-    return Pair(targetWeekStart, targetWeekEnd)
-}
-
-private fun getMonthDateRange(monthOffset: Int): Pair<LocalDate, LocalDate> {
-    val today = LocalDate.now()
-    val targetMonth = today.plusMonths(monthOffset.toLong())
-    val startOfMonth = targetMonth.withDayOfMonth(1)
-    val endOfMonth = targetMonth.withDayOfMonth(targetMonth.lengthOfMonth())
-    return Pair(startOfMonth, endOfMonth)
-}
-
-private fun getYearDateRange(yearOffset: Int): Pair<LocalDate, LocalDate> {
-    val today = LocalDate.now()
-    val targetYear = today.plusYears(yearOffset.toLong())
-    val startOfYear = targetYear.withDayOfYear(1)
-    val endOfYear = targetYear.withDayOfYear(targetYear.lengthOfYear())
-    return Pair(startOfYear, endOfYear)
-}
-
-internal fun filterSummariesByPeriod(
-    summaries: List<DailySummary>,
-    period: TimePeriod,
-    weekOffset: Int,
-    monthOffset: Int,
-    yearOffset: Int = 0,
-    weekStartDay: WeekStartDay = WeekStartDay.SYSTEM
-): List<DailySummary> {
-    val (startDate, endDate) = when (period) {
-        TimePeriod.WEEKLY -> getWeekDateRange(weekOffset, weekStartDay)
-        TimePeriod.MONTHLY -> getMonthDateRange(monthOffset)
-        TimePeriod.YEARLY -> getYearDateRange(yearOffset)
-    }
-
-    return summaries.filter { summary ->
-        val summaryDate = LocalDate.parse(summary.date)
-        summaryDate in startDate..endDate
-    }
-}
-
 @Preview(showBackground = true, name = "History Screen")
 @Composable
 private fun HistoryScreenPreview() {
@@ -645,7 +574,7 @@ private fun HistoryScreenPreview() {
             else -> dailyGoal * 1.20
         }
         val entryCount = 4 + (index % 5)
-        DailySummary(
+        com.cemcakmak.hydrotracker.data.database.entities.DailySummary(
             date = date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
             totalIntake = totalIntake,
             dailyGoal = dailyGoal,
@@ -659,10 +588,31 @@ private fun HistoryScreenPreview() {
         )
     }
 
+    val uiState = HistoryUiState(
+        summaries = sampleSummaries,
+        weeklyStats = WeeklyHistoryStats(
+            totalIntake = sampleSummaries.take(7).sumOf { it.totalIntake },
+            averageIntake = sampleSummaries.take(7).map { it.totalIntake }.average(),
+            bestDayIntake = sampleSummaries.take(7).maxOfOrNull { it.totalIntake } ?: 0.0
+        ),
+        monthlyStats = MonthlyHistoryStats(
+            daysTracked = sampleSummaries.size,
+            goalsMet = sampleSummaries.count { it.goalAchieved },
+            successRate = (sampleSummaries.count { it.goalAchieved }.toDouble() / sampleSummaries.size) * 100.0
+        ),
+        yearlyStats = YearlyHistoryStats(
+            daysTracked = sampleSummaries.size,
+            goalsMet = sampleSummaries.count { it.goalAchieved },
+            totalIntake = sampleSummaries.sumOf { it.totalIntake }
+        )
+    )
+
     HydroTrackerTheme {
         HistoryScreen(
-            summaries = sampleSummaries
+            uiState = uiState,
+            onPeriodSelected = {},
+            onPreviousPeriod = {},
+            onNextPeriod = {}
         )
     }
 }
-

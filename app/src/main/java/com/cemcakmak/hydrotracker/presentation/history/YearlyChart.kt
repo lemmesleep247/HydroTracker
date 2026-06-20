@@ -72,7 +72,7 @@ import kotlin.time.Duration.Companion.milliseconds
 @Composable
 internal fun YearlyChartSection(
     summaries: List<DailySummary>,
-    yearOffset: Int,
+    stats: YearlyHistoryStats,
     volumeUnit: VolumeUnit,
     animationDelayMillis: Int = 0
 ) {
@@ -84,12 +84,10 @@ internal fun YearlyChartSection(
             .padding(top = 16.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        val filteredSummaries = filterSummariesByPeriod(summaries, TimePeriod.YEARLY, weekOffset = 0, monthOffset = 0, yearOffset = yearOffset)
-
-        if (filteredSummaries.isNotEmpty()) {
+        if (summaries.isNotEmpty()) {
             // Yearly visualization - all days of the year
             YearlyHeatmap(
-                summaries = filteredSummaries,
+                summaries = summaries,
                 animationDelayMillis = animationDelayMillis
             )
 
@@ -100,14 +98,9 @@ internal fun YearlyChartSection(
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Yearly stats
-                val totalDays = filteredSummaries.size.toDouble()
-                val goalAchievedDays = filteredSummaries.count { it.goalAchieved }.toDouble()
-                val totalIntake = filteredSummaries.sumOf { it.totalIntake }
-
                 AnimatedStatItem(
                     label = stringResource(R.string.history_stat_days_tracked),
-                    targetValue = totalDays,
+                    targetValue = stats.daysTracked.toDouble(),
                     hapticsEnabled = true,
                     formatValue = { it.toInt().toString() }
                 )
@@ -120,7 +113,7 @@ internal fun YearlyChartSection(
 
                 AnimatedStatItem(
                     label = stringResource(R.string.history_stat_goals_met),
-                    targetValue = goalAchievedDays,
+                    targetValue = stats.goalsMet.toDouble(),
                     formatValue = { it.toInt().toString() }
                 )
 
@@ -132,8 +125,8 @@ internal fun YearlyChartSection(
 
                 AnimatedStatItem(
                     label = stringResource(R.string.history_stat_total_intake),
-                    targetValue = totalIntake,
-                    formatValue = { VolumeUnitConverter.format(context, totalIntake, volumeUnit) }
+                    targetValue = stats.totalIntake,
+                    formatValue = { VolumeUnitConverter.format(context, it.toDouble(), volumeUnit) }
                 )
             }
         } else {
@@ -317,7 +310,11 @@ private fun YearlyChartSectionPreview() {
     HydroTrackerTheme {
         YearlyChartSection(
             summaries = sampleSummaries,
-            yearOffset = 0,
+            stats = YearlyHistoryStats(
+                daysTracked = sampleSummaries.size,
+                goalsMet = sampleSummaries.count { it.goalAchieved },
+                totalIntake = sampleSummaries.sumOf { it.totalIntake }
+            ),
             volumeUnit = VolumeUnit.MILLILITRES
         )
     }

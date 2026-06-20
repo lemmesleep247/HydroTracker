@@ -54,6 +54,8 @@ import com.cemcakmak.hydrotracker.data.database.repository.CustomBeverageReposit
 import com.cemcakmak.hydrotracker.presentation.common.*
 import com.cemcakmak.hydrotracker.presentation.home.HomeScreen
 import com.cemcakmak.hydrotracker.presentation.history.HistoryScreen
+import com.cemcakmak.hydrotracker.presentation.history.HistoryViewModel
+import com.cemcakmak.hydrotracker.presentation.history.HistoryViewModelFactory
 import com.cemcakmak.hydrotracker.presentation.settings.SettingsHubScreen
 import com.cemcakmak.hydrotracker.presentation.settings.AboutScreen
 import com.cemcakmak.hydrotracker.presentation.settings.UpdatesScreen
@@ -246,6 +248,12 @@ fun HydroTrackerApp(
 ) {
     val themeViewModel: ThemeViewModel = viewModel(factory = ThemeViewModelFactory(userRepository))
     val themePreferences by themeViewModel.themePreferences.collectAsState()
+
+    val historyViewModel: HistoryViewModel = viewModel(
+        factory = HistoryViewModelFactory(waterIntakeRepository, userRepository)
+    )
+    val historyUiState by historyViewModel.uiState.collectAsState()
+
     val appPreferences by userRepository.appPreferences.collectAsState(initial = null)
     val userProfile = appPreferences?.profile
     val isOnboardingCompleted = appPreferences?.onboardingCompleted ?: false
@@ -462,13 +470,13 @@ fun HydroTrackerApp(
                         }
 
                         entry<NavigationRoutes.History> {
-                            val historySummaries by waterIntakeRepository.getAllSummaries().collectAsState(
-                                initial = emptyList()
-                            )
                             HistoryScreen(
-                                summaries = historySummaries,
+                                uiState = historyUiState,
                                 themePreferences = themePreferences,
-                                userProfile = userProfile
+                                userProfile = userProfile,
+                                onPeriodSelected = historyViewModel::selectPeriod,
+                                onPreviousPeriod = historyViewModel::previousPeriod,
+                                onNextPeriod = historyViewModel::nextPeriod
                             )
                         }
 

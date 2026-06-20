@@ -98,6 +98,7 @@ import kotlin.time.Duration.Companion.milliseconds
 internal fun WeeklyChartSection(
     weekOffset: Int,
     summaries: List<DailySummary> = emptyList(),
+    stats: WeeklyHistoryStats,
     weekStartDay: WeekStartDay = WeekStartDay.SYSTEM,
     volumeUnit: VolumeUnit,
     dateFormat: DateFormatPattern = DateFormatPattern.SYSTEM,
@@ -115,9 +116,7 @@ internal fun WeeklyChartSection(
     ) {
         val haptics = LocalHapticFeedback.current
 
-        // Filter summaries for the selected week and convert to DailyTotal format
-        val filteredSummaries = filterSummariesByPeriod(summaries, TimePeriod.WEEKLY, weekOffset, 0, 0, weekStartDay)
-        val dailyGoal = filteredSummaries.firstOrNull()?.dailyGoal ?: 2700.0
+        val dailyGoal = summaries.firstOrNull()?.dailyGoal ?: 2700.0
 
         // Create a complete week with all 7 days, filling in missing days with 0 data
         val (startOfWeek) = getWeekDateRange(weekOffset, weekStartDay)
@@ -126,7 +125,7 @@ internal fun WeeklyChartSection(
         for (i in 0..6) {
             val currentDate = startOfWeek.plusDays(i.toLong())
             val dateString = currentDate.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-            val summary = filteredSummaries.find { it.date == dateString }
+            val summary = summaries.find { it.date == dateString }
 
             filteredDailyTotals.add(
                 DailyTotal(
@@ -186,14 +185,9 @@ internal fun WeeklyChartSection(
                 horizontalArrangement = Arrangement.SpaceEvenly,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                val totalAmount = filteredDailyTotals.sumOf { it.totalAmount }
-                val daysWithData = filteredDailyTotals.count { it.totalAmount > 0.0 }
-                val avgAmount = if (daysWithData > 0) totalAmount / daysWithData else 0.0
-                val bestAmount = filteredDailyTotals.maxOfOrNull { it.totalAmount } ?: 0.0
-
                 AnimatedStatItem(
                     label = stringResource(R.string.history_stat_total),
-                    targetValue = totalAmount / 1000.0,
+                    targetValue = stats.totalIntake / 1000.0,
                     formatValue = { VolumeUnitConverter.format(context, it.toDouble() * 1000.0, volumeUnit) }
                 )
 
@@ -205,7 +199,7 @@ internal fun WeeklyChartSection(
 
                 AnimatedStatItem(
                     label = stringResource(R.string.history_stat_average),
-                    targetValue = avgAmount / 1000.0,
+                    targetValue = stats.averageIntake / 1000.0,
                     hapticsEnabled = true,
                     formatValue = { VolumeUnitConverter.format(context, it.toDouble() * 1000.0, volumeUnit) }
                 )
@@ -218,7 +212,7 @@ internal fun WeeklyChartSection(
 
                 AnimatedStatItem(
                     label = stringResource(R.string.history_stat_best_day),
-                    targetValue = bestAmount / 1000.0,
+                    targetValue = stats.bestDayIntake / 1000.0,
                     formatValue = { VolumeUnitConverter.format(context, it.toDouble() * 1000.0, volumeUnit) }
                 )
             }
@@ -525,6 +519,11 @@ private fun WeeklyChartSectionPreview() {
         WeeklyChartSection(
             weekOffset = 0,
             summaries = sampleSummaries,
+            stats = WeeklyHistoryStats(
+                totalIntake = sampleSummaries.sumOf { it.totalIntake },
+                averageIntake = sampleSummaries.map { it.totalIntake }.average(),
+                bestDayIntake = sampleSummaries.maxOfOrNull { it.totalIntake } ?: 0.0
+            ),
             volumeUnit = VolumeUnit.MILLILITRES,
             dateFormat = DateFormatPattern.SYSTEM
         )
