@@ -1,6 +1,9 @@
 package com.cemcakmak.hydrotracker.presentation.common
 
 import android.annotation.SuppressLint
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.AnchoredDraggableState
@@ -138,13 +141,33 @@ fun SwipeActionItem(
         }
     }
 
-    // Subtle tick the moment the drag crosses the commit threshold.
+    // Subtle tick and icon bounce the moment the drag crosses the commit threshold.
     val haptics = LocalHapticFeedback.current
+    val iconScale = remember { Animatable(1f) }
     val thresholdPx = with(density) { maxOffset.toPx() } * 0.4f
     LaunchedEffect(state, thresholdPx) {
         snapshotFlow { state.requireOffset().absoluteValue >= thresholdPx }
             .distinctUntilChanged()
-            .collect { past -> if (past) haptics.performHapticFeedback(HapticFeedbackType.SegmentTick) }
+            .collect { past ->
+                if (past) {
+                    haptics.performHapticFeedback(HapticFeedbackType.SegmentTick)
+                    iconScale.snapTo(1f)
+                    iconScale.animateTo(
+                        targetValue = 1.4f,
+                        animationSpec = spring(
+                            stiffness = Spring.StiffnessMedium,
+                            dampingRatio = Spring.DampingRatioMediumBouncy
+                        )
+                    )
+                    iconScale.animateTo(
+                        targetValue = 1f,
+                        animationSpec = spring(
+                            stiffness = Spring.StiffnessLow,
+                            dampingRatio = Spring.DampingRatioMediumBouncy
+                        )
+                    )
+                }
+            }
     }
 
     Box(
@@ -158,6 +181,7 @@ fun SwipeActionItem(
                     state = state,
                     gapPx = gapPx,
                     minLeadingPaddingPx = minLeadingPaddingPx,
+                    iconScale = iconScale.value,
                     config = config
                 )
             }
@@ -166,6 +190,7 @@ fun SwipeActionItem(
                     state = state,
                     gapPx = gapPx,
                     minLeadingPaddingPx = minLeadingPaddingPx,
+                    iconScale = iconScale.value,
                     config = config
                 )
             }
@@ -192,6 +217,7 @@ private fun StartActionPill(
     state: AnchoredDraggableState<SwipeActionAnchor>,
     gapPx: Float,
     minLeadingPaddingPx: Float,
+    iconScale: Float,
     config: SwipeActionConfig
 ) {
     Box(
@@ -214,6 +240,7 @@ private fun StartActionPill(
             state = state,
             gapPx = gapPx,
             minLeadingPaddingPx = minLeadingPaddingPx,
+            iconScale = iconScale,
             leadingStart = true,
             config = config
         )
@@ -226,6 +253,7 @@ private fun EndActionPill(
     state: AnchoredDraggableState<SwipeActionAnchor>,
     gapPx: Float,
     minLeadingPaddingPx: Float,
+    iconScale: Float,
     config: SwipeActionConfig
 ) {
     Box(
@@ -248,6 +276,7 @@ private fun EndActionPill(
             state = state,
             gapPx = gapPx,
             minLeadingPaddingPx = minLeadingPaddingPx,
+            iconScale = iconScale,
             leadingStart = false,
             config = config
         )
@@ -255,9 +284,9 @@ private fun EndActionPill(
 }
 
 /**
- * Constant-size action icon. Centered in the pill once it is wide enough, but kept at least
- * [minLeadingPaddingPx] from the pill's leading edge (and clipped by the pill) while narrow, so it
- * emerges from the swiped edge instead of being squeezed in the middle.
+ * Action icon that scales on the commit threshold. Centered in the pill once it is wide enough,
+ * but kept at least [minLeadingPaddingPx] from the pill's leading edge (and clipped by the pill)
+ * while narrow, so it emerges from the swiped edge instead of being squeezed in the middle.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -265,6 +294,7 @@ private fun ActionIcon(
     state: AnchoredDraggableState<SwipeActionAnchor>,
     gapPx: Float,
     minLeadingPaddingPx: Float,
+    iconScale: Float,
     leadingStart: Boolean,
     config: SwipeActionConfig
 ) {
@@ -273,6 +303,8 @@ private fun ActionIcon(
         contentDescription = config.contentDescription,
         tint = config.contentColor,
         modifier = Modifier.graphicsLayer {
+            scaleX = iconScale
+            scaleY = iconScale
             val pillWidth = (state.requireOffset().absoluteValue - gapPx).coerceAtLeast(0f)
             val centeredLeft = (pillWidth - size.width) / 2f
             val delta = (minLeadingPaddingPx - centeredLeft).coerceAtLeast(0f)
