@@ -21,6 +21,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -44,6 +45,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import com.cemcakmak.hydrotracker.R
@@ -72,7 +74,7 @@ import com.cemcakmak.hydrotracker.ui.theme.HydroTrackerTheme
  * @param onDelete Called when the user confirms deletion of an entry.
  * @param title Optional section title. Defaults to the "Recent entries" label.
  */
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun DailyEntriesSection(
     modifier: Modifier = Modifier,
@@ -92,6 +94,23 @@ fun DailyEntriesSection(
     var dialogEntry by remember { mutableStateOf<WaterIntakeEntry?>(null) }
     // Set on confirm; the matching row plays the collapse, then onDelete fires when it settles.
     var confirmedDeleteEntry by remember { mutableStateOf<WaterIntakeEntry?>(null) }
+    // Clear the marker only once the entry has actually left the list, so neighbours don't briefly
+    // revert their corners in the window between the collapse settling and the data updating.
+    LaunchedEffect(entries, confirmedDeleteEntry) {
+        if (confirmedDeleteEntry?.let { c -> entries.none { it.id == c.id } } == true) {
+            confirmedDeleteEntry = null
+        }
+    }
+
+    val sizeSpec = MaterialTheme.motionScheme.slowSpatialSpec<IntSize>()
+    val fadeSpec = MaterialTheme.motionScheme.slowEffectsSpec<Float>()
+    // Group shape is driven by the surviving rows so a neighbour starts morphing
+    // its corners the instant deletion is confirmed. In sync with the collapse.
+    val survivorIndexById = entries
+        .filterNot { it.id == confirmedDeleteEntry?.id }
+        .withIndex()
+        .associate { (i, e) -> e.id to i }
+    val survivorCount = survivorIndexById.size
 
     Column(
         modifier = Modifier.padding(horizontal = 16.dp)
@@ -104,23 +123,24 @@ fun DailyEntriesSection(
 
         entries.forEachIndexed { index, entry ->
             key(entry.id) {
-                val visibleState = remember { MutableTransitionState(true) }
+                // Start hidden and flip to visible so newly added rows animate in instead of popping.
+                val visibleState = remember { MutableTransitionState(false).apply { targetState = true } }
                 // Start the collapse once this entry's deletion is confirmed.
                 LaunchedEffect(confirmedDeleteEntry) {
                     if (confirmedDeleteEntry?.id == entry.id) visibleState.targetState = false
                 }
-                // Remove from the data only after the collapse animation has settled.
+                // Remove from the data only after the collapse animation has settled. The marker is
+                // cleared separately once the entry leaves [entries].
                 LaunchedEffect(visibleState.isIdle) {
                     if (visibleState.isIdle && !visibleState.currentState) {
                         onDelete(entry)
-                        confirmedDeleteEntry = null
                     }
                 }
 
                 AnimatedVisibility(
                     visibleState = visibleState,
-                    enter = fadeIn() + expandVertically(),
-                    exit = shrinkVertically() + fadeOut()
+                    enter = fadeIn(fadeSpec) + expandVertically(sizeSpec),
+                    exit = shrinkVertically(sizeSpec) + fadeOut(fadeSpec)
                 ) {
                     BoxWithConstraints {
 
@@ -151,9 +171,12 @@ fun DailyEntriesSection(
                                 coroutineScope.launch { swipeState.animateTo(SwipeActionAnchor.Center) }
                             }
                         ) {
+                            // A surviving row uses its position among survivors; the row currently
+                            // collapsing keeps its original position so its own corners hold steady.
+                            val survivorIndex = survivorIndexById[entry.id]
                             DailyGroupCard(
-                                index = index,
-                                size = entries.size,
+                                index = survivorIndex ?: index,
+                                size = if (survivorIndex != null) survivorCount else entries.size,
                                 tonalElevation = tonalElevation
                             ) {
                                 DailyEntryItem(
@@ -184,6 +207,7 @@ fun DailyEntriesSection(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 internal fun DailyGroupCard(
     index: Int,
@@ -191,7 +215,7 @@ internal fun DailyGroupCard(
     tonalElevation: Dp = 2.dp,
     content: @Composable () -> Unit
 ) {
-    val shape = getGroupShape(index, size)
+    val shape = rememberAnimatedGroupShape(index, size)
 
     Surface(
         shape = shape,

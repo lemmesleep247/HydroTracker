@@ -130,7 +130,7 @@ fun <T> ReorderableGroupedColumn(
     val mainSize = pinned.size + visible.size
     val placementSpec = MaterialTheme.motionScheme.slowSpatialSpec<IntOffset>()
 
-    val slots = buildList<ReorderSlot<T>> {
+    val slots = buildList {
         pinned.forEachIndexed { i, item ->
             add(ReorderSlot.RowSlot(item, pinned = true, hidden = false, posInGroup = i, groupSize = mainSize))
         }
@@ -322,7 +322,7 @@ private fun GroupedRow(
 /** Grouped-card shape whose four corner radii spring toward the target for [index]/[size]. */
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
-private fun rememberAnimatedGroupShape(index: Int, size: Int): Shape {
+internal fun rememberAnimatedGroupShape(index: Int, size: Int): Shape {
     val target = groupCorners(index, size)
     val spec = MaterialTheme.motionScheme.slowSpatialSpec<Dp>()
     val topStart by animateDpAsState(target.topStart, spec, label = "ts")
