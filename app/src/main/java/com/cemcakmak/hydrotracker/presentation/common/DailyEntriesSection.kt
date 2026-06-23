@@ -27,13 +27,16 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -47,6 +50,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import com.cemcakmak.hydrotracker.R
 import com.cemcakmak.hydrotracker.data.database.entities.WaterIntakeEntry
@@ -58,6 +64,7 @@ import com.cemcakmak.hydrotracker.data.models.Gender
 import com.cemcakmak.hydrotracker.data.models.ThemePreferences
 import com.cemcakmak.hydrotracker.data.models.UserProfile
 import com.cemcakmak.hydrotracker.ui.theme.HydroTrackerTheme
+import kotlin.time.Duration.Companion.milliseconds
 
 /**
  * A reusable card that lists daily water intake entries.
@@ -70,6 +77,7 @@ import com.cemcakmak.hydrotracker.ui.theme.HydroTrackerTheme
  * @param userProfile Profile used for volume formatting and goal context.
  * @param themePreferences Theme preferences used for time/date formatting.
  * @param tonalElevation Tonal elevation of the surface
+ * @param cascadeEntries When true, rows reveal one-by-one (staggered).
  * @param onEdit Called when the user swipes an entry to edit it.
  * @param onDelete Called when the user confirms deletion of an entry.
  * @param title Optional section title. Defaults to the "Recent entries" label.
@@ -82,6 +90,7 @@ fun DailyEntriesSection(
     userProfile: UserProfile,
     themePreferences: ThemePreferences,
     tonalElevation: Dp = 2.dp,
+    cascadeEntries: Boolean = true,
     onEdit: (WaterIntakeEntry) -> Unit,
     onDelete: (WaterIntakeEntry) -> Unit,
     title: String = stringResource(R.string.home_section_recent_entries)
@@ -112,6 +121,18 @@ fun DailyEntriesSection(
         .associate { (i, e) -> e.id to i }
     val survivorCount = survivorIndexById.size
 
+    val rowStates = remember { mutableStateMapOf<Long, MutableTransitionState<Boolean>>() }
+    val orderedIds = entries.map { it.id }
+    LaunchedEffect(orderedIds) {
+        if (!cascadeEntries) return@LaunchedEffect
+        for (id in orderedIds) {
+            val state = snapshotFlow { rowStates[id] }.filterNotNull().first()
+            if (state.currentState || state.targetState) continue
+            state.targetState = true
+            delay(200L.milliseconds)
+        }
+    }
+
     Column(
         modifier = Modifier.padding(horizontal = 16.dp)
     ) {
@@ -123,16 +144,23 @@ fun DailyEntriesSection(
 
         entries.forEachIndexed { index, entry ->
             key(entry.id) {
-                // Start hidden and flip to visible so newly added rows animate in instead of popping.
-                val visibleState = remember { MutableTransitionState(false).apply { targetState = true } }
+                val visibleState = remember { MutableTransitionState(!cascadeEntries) }
+                DisposableEffect(Unit) {
+                    rowStates[entry.id] = visibleState
+                    onDispose { rowStates.remove(entry.id) }
+                }
                 // Start the collapse once this entry's deletion is confirmed.
                 LaunchedEffect(confirmedDeleteEntry) {
                     if (confirmedDeleteEntry?.id == entry.id) visibleState.targetState = false
                 }
-                // Remove from the data only after the collapse animation has settled. The marker is
-                // cleared separately once the entry leaves [entries].
+                // Remove from the data only after the collapse animation has settled and only when
+                // this row is the confirmed-delete target. A freshly created row is also idle+hidden
+                // (before the cascade reveals it), so without this guard every row would self-delete.
+                // The marker is cleared separately once the entry leaves [entries].
                 LaunchedEffect(visibleState.isIdle) {
-                    if (visibleState.isIdle && !visibleState.currentState) {
+                    if (visibleState.isIdle && !visibleState.currentState &&
+                        confirmedDeleteEntry?.id == entry.id
+                    ) {
                         onDelete(entry)
                     }
                 }

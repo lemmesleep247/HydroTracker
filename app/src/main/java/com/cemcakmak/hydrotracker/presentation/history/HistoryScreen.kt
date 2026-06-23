@@ -22,6 +22,7 @@ package com.cemcakmak.hydrotracker.presentation.history
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.EnterExitState
+import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -30,6 +31,7 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.EaseOutCubic
 import androidx.compose.animation.core.animateDp
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -46,10 +48,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.annotation.StringRes
+import androidx.compose.animation.core.EaseOut
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.unit.Dp
 import com.cemcakmak.hydrotracker.R
+import com.cemcakmak.hydrotracker.data.database.entities.DailySummary
 import com.cemcakmak.hydrotracker.ui.theme.HydroTrackerTheme
 import com.cemcakmak.hydrotracker.data.models.ActivityLevel
 import com.cemcakmak.hydrotracker.data.models.AgeGroup
@@ -445,30 +450,80 @@ internal fun SelectedDayEntries(
     onEdit: (WaterIntakeEntry) -> Unit,
     onDelete: (WaterIntakeEntry) -> Unit
 ) {
-    Column(
+    val fadeSpec = tween<Float>(durationMillis = 600, delayMillis = 100, easing = EaseOut)
+    val blurSpec = tween<Dp>(durationMillis = 800, easing = EaseOut)
+
+    val currentHasRows = selectedDate != null && userProfile != null && entries.isNotEmpty()
+    var prevHadRows by remember { mutableStateOf(false) }
+    LaunchedEffect(selectedDate) { prevHadRows = currentHasRows }
+
+    AnimatedContent(
+        targetState = selectedDate to entries,
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 16.dp)
-    ) {
-        if (selectedDate == null || userProfile == null) {
-            Text(
-                text = stringResource(R.string.history_select_day_hint),
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 24.dp)
-            )
-        } else {
-            DailyEntriesSection(
-                entries = entries,
-                userProfile = userProfile,
-                themePreferences = themePreferences,
-                onEdit = onEdit,
-                onDelete = onDelete,
-                title = DateTimeFormatters.formatDate(
-                    LocalDate.parse(selectedDate),
-                    themePreferences.dateFormat
+            .padding(top = 16.dp),
+        contentKey = { it.first },
+        transitionSpec = {
+            if (prevHadRows) {
+                (fadeIn(fadeSpec) togetherWith fadeOut(fadeSpec)) using SizeTransform(clip = false)
+            } else {
+                (EnterTransition.None togetherWith fadeOut(tween(200, easing = EaseOut))) using
+                    SizeTransform(clip = false) { _, _ -> snap() }
+            }
+        },
+        label = "selectedDayTransition"
+    ) { day ->
+        val date = day.first
+        val dayEntries = day.second
+        val thisDayHasRows = date != null && userProfile != null && dayEntries.isNotEmpty()
+        val appearedAfterList = remember { prevHadRows }
+        val blur by transition.animateDp(
+            transitionSpec = { blurSpec },
+            label = "selectedDayBlur"
+        ) { state ->
+            when (state) {
+                EnterExitState.PostExit -> if (thisDayHasRows) 16.dp else 0.dp
+                EnterExitState.PreEnter -> if (appearedAfterList) 16.dp else 0.dp
+                EnterExitState.Visible -> 0.dp
+            }
+        }
+
+        Box(modifier = Modifier.blur(blur, BlurredEdgeTreatment.Unbounded)) {
+            if (date == null || userProfile == null) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = 34.dp)
+                        .padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(18.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(R.drawable.format_list_bulleted),
+                        tint = MaterialTheme.colorScheme.secondary,
+                        contentDescription = null
+                    )
+
+                    Text(
+                        text = stringResource(R.string.history_select_day_hint),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                }
+            } else {
+                DailyEntriesSection(
+                    entries = dayEntries,
+                    userProfile = userProfile,
+                    themePreferences = themePreferences,
+                    cascadeEntries = !appearedAfterList,
+                    onEdit = onEdit,
+                    onDelete = onDelete,
+                    title = DateTimeFormatters.formatDate(
+                        LocalDate.parse(date),
+                        themePreferences.dateFormat
+                    )
                 )
-            )
+            }
         }
     }
 }
@@ -530,7 +585,7 @@ private fun HistoryScreenPreview() {
             else -> dailyGoal * 1.20
         }
         val entryCount = 4 + (index % 5)
-        com.cemcakmak.hydrotracker.data.database.entities.DailySummary(
+        DailySummary(
             date = date.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")),
             totalIntake = totalIntake,
             dailyGoal = dailyGoal,
