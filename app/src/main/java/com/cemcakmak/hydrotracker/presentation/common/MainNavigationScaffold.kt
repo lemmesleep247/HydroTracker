@@ -6,35 +6,30 @@ package com.cemcakmak.hydrotracker.presentation.common
 import androidx.activity.compose.BackHandler
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.FloatingActionButtonMenu
 import androidx.compose.material3.FloatingActionButtonMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.ShortNavigationBar
 import androidx.compose.material3.ShortNavigationBarItem
-import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.ToggleFloatingActionButton
 import androidx.compose.material3.ToggleFloatingActionButtonDefaults.animateIcon
-import androidx.compose.material3.TooltipBox
+import androidx.compose.material3.ToggleFloatingActionButtonDefaults.containerCornerRadius
+import androidx.compose.material3.ToggleFloatingActionButtonDefaults.containerSize
 import androidx.compose.material3.TooltipAnchorPosition
+import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.animateFloatingActionButton
@@ -45,8 +40,8 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.compositionLocalOf
-import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -56,6 +51,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
@@ -68,6 +64,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
@@ -75,12 +72,10 @@ import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
-import androidx.compose.ui.semantics.isTraversalGroup
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.paneTitle
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
-import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -98,21 +93,24 @@ val LocalSettingsHubBlur = compositionLocalOf<MutableState<Dp>> {
     error("LocalSettingsHubBlur must be provided by MainNavigationScaffold")
 }
 
+private const val NAV_BAR_ENTER_DURATION_MS = 250
+private const val NAV_BAR_EXIT_DURATION_MS = 200
+
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun MainNavigationScaffold(
     backStack: NavBackStack<NavKey>,
     currentKey: NavigationRoutes,
     snackbarHostState: SnackbarHostState,
-    fabExpanded: Boolean = true,
+    isHistoryDaySelected: Boolean = false,
     onAddCustomClick: () -> Unit = {},
+    onAddBeverageClick: () -> Unit = {},
+    onAddContainerClick: () -> Unit = {},
     onTabSwitch: () -> Unit = {},
     autoHideNavBar: Boolean = false,
     navBarLabelMode: NavBarLabelMode = NavBarLabelMode.ALWAYS,
     content: @Composable (PaddingValues) -> Unit,
 ) {
-    val haptics = LocalHapticFeedback.current
-
     val shouldShowBottomBar = currentKey in setOf(
         NavigationRoutes.Home,
         NavigationRoutes.History,
@@ -147,6 +145,21 @@ fun MainNavigationScaffold(
 
     val settingsBlurState = remember { mutableStateOf(0.dp) }
 
+    // Pixel height of the navigation bar, captured via onSizeChanged for the FAB offset.
+    // Only used for graphicsLayer translation — not for layout constraints — so no feedback loop.
+    val barHeightPx = remember { mutableFloatStateOf(0f) }
+    val hideProgress by animateFloatAsState(
+        targetValue = if (autoHideNavBar && !barVisibleByScroll.value) 1f else 0f,
+        animationSpec = tween(
+            durationMillis = if (barVisibleByScroll.value) NAV_BAR_ENTER_DURATION_MS else NAV_BAR_EXIT_DURATION_MS,
+            easing = if (barVisibleByScroll.value) FastOutSlowInEasing else FastOutLinearInEasing
+        ),
+        label = "navBarHide"
+    )
+
+    val fabVisible = currentKey == NavigationRoutes.Home ||
+            (currentKey == NavigationRoutes.History && isHistoryDaySelected)
+
     CompositionLocalProvider(LocalSettingsHubBlur provides settingsBlurState) {
         Scaffold(
             modifier = nestedScrollModifier,
@@ -172,12 +185,14 @@ fun MainNavigationScaffold(
                 }
             },
             bottomBar = {
-                AnimatedVisibility(
-                    visible = shouldShowBottomBar && (!autoHideNavBar || barVisibleByScroll.value),
-                    enter = slideInVertically { it } + fadeIn(),
-                    exit = slideOutVertically { it } + fadeOut()
-                ) {
+                if (shouldShowBottomBar) {
                     HydroNavigationBar(
+                        modifier = Modifier
+                            .onSizeChanged { barHeightPx.floatValue = it.height.toFloat() }
+                            .graphicsLayer {
+                                translationY = size.height * hideProgress
+                                alpha = 1f - hideProgress
+                            },
                         currentKey = currentKey,
                         labelMode = navBarLabelMode,
                         onTabSwitch = onTabSwitch,
@@ -191,35 +206,16 @@ fun MainNavigationScaffold(
                 }
             },
             floatingActionButton = {
-                AnimatedVisibility(
-                    visible = currentKey != NavigationRoutes.Settings,
-                    enter = scaleIn() + fadeIn(),
-                    exit = scaleOut() + fadeOut()
-                ) {
-                    FloatingActionMenuButton()
-                    /*
-                    ExtendedFloatingActionButton(
-                        onClick = {
-                            onAddCustomClick()
-                            haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
-                        },
-                        expanded = fabExpanded,
-                        icon = {
-                            Icon(
-                                imageVector = Icons.Default.Edit,
-                                contentDescription = stringResource(R.string.cd_add_custom_amount)
-                            )
-                        },
-                        text = {
-                            Text(
-                                text = stringResource(R.string.nav_add_custom),
-                                style = MaterialTheme.typography.labelLargeEmphasized
-                            )
-                        }
-                    )
-
-                     */
-                }
+                FloatingActionMenuButton(
+                    modifier = Modifier.graphicsLayer {
+                        translationY = barHeightPx.floatValue * hideProgress + 16.dp.toPx()
+                    },
+                    currentKey = currentKey,
+                    fabVisible = fabVisible,
+                    onAddCustomClick = onAddCustomClick,
+                    onAddBeverageClick = onAddBeverageClick,
+                    onAddContainerClick = onAddContainerClick
+                )
             },
             snackbarHost = { HydroSnackbarHost(snackbarHostState) }
         ) { paddingValues ->
@@ -230,27 +226,57 @@ fun MainNavigationScaffold(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FloatingActionMenuButton() {
-    val listState = rememberLazyListState()
-    val fabVisible by remember {
-        derivedStateOf {
-            listState.firstVisibleItemIndex == 0 || listState.canScrollForward == false
-        }
-    }
+fun FloatingActionMenuButton(
+    modifier: Modifier = Modifier,
+    currentKey: NavigationRoutes,
+    fabVisible: Boolean,
+    onAddCustomClick: () -> Unit,
+    onAddBeverageClick: () -> Unit,
+    onAddContainerClick: () -> Unit
+) {
+    val haptics = LocalHapticFeedback.current
     val focusRequester = remember { FocusRequester() }
+    val toggleMenuLabel = stringResource(R.string.fab_menu_toggle_menu)
 
-    val items =
-        listOf(
-            ImageVector.vectorResource(R.drawable.blender_filled) to "New beverage",
-            ImageVector.vectorResource(R.drawable.soft_drink_filled) to "New container",
-            ImageVector.vectorResource(R.drawable.add_filled) to "Add custom"
+    val items = when (currentKey) {
+        NavigationRoutes.Home -> listOf(
+            FabMenuItem(
+                icon = ImageVector.vectorResource(R.drawable.blender_filled),
+                labelResId = R.string.fab_menu_new_beverage,
+                onClick = onAddBeverageClick
+            ),
+            FabMenuItem(
+                icon = ImageVector.vectorResource(R.drawable.soft_drink_filled),
+                labelResId = R.string.fab_menu_new_container,
+                onClick = onAddContainerClick
+            ),
+            FabMenuItem(
+                icon = ImageVector.vectorResource(R.drawable.add_filled),
+                labelResId = R.string.nav_add_custom,
+                onClick = onAddCustomClick
+            )
         )
+        NavigationRoutes.History -> listOf(
+            FabMenuItem(
+                icon = ImageVector.vectorResource(R.drawable.add_filled),
+                labelResId = R.string.fab_menu_add_past_entry,
+                onClick = onAddCustomClick
+            )
+        )
+        else -> emptyList()
+    }
 
     var fabMenuExpanded by rememberSaveable { mutableStateOf(false) }
 
     BackHandler(fabMenuExpanded) { fabMenuExpanded = false }
 
+    // Collapse the menu whenever the FAB itself is hidden, so items do not pop back separately.
+    LaunchedEffect(fabVisible) {
+        if (!fabVisible) fabMenuExpanded = false
+    }
+
     FloatingActionButtonMenu(
+        modifier = modifier,
         expanded = fabMenuExpanded,
         button = {
             TooltipBox(
@@ -265,14 +291,11 @@ fun FloatingActionMenuButton() {
                     PlainTooltip(
                         modifier =
                             Modifier.semantics {
-                                // TODO(b/496338253): Remove this modifier once bug where
-                                //  tooltip text is not announced by a11y screen readers is
-                                //  resolved.
                                 liveRegion = LiveRegionMode.Assertive
-                                paneTitle = "Toggle menu"
+                                paneTitle = toggleMenuLabel
                             }
                     ) {
-                        Text("Toggle menu")
+                        Text(toggleMenuLabel)
                     }
                 },
                 state = rememberTooltipState()
@@ -280,22 +303,26 @@ fun FloatingActionMenuButton() {
                 ToggleFloatingActionButton(
                     modifier = Modifier
                         .semantics {
-                            traversalIndex = -1f
-                            stateDescription = if (fabMenuExpanded) "Expanded" else "Collapsed"
-                            contentDescription = "Toggle menu"
+                            stateDescription = toggleMenuLabel
+                            contentDescription = toggleMenuLabel
                         }
                         .animateFloatingActionButton(
                             visible = fabVisible || fabMenuExpanded,
                             alignment = Alignment.BottomEnd
                         )
                         .focusRequester(focusRequester),
+                    containerSize = containerSize(80.dp, 55.dp),
+                    containerCornerRadius = containerCornerRadius(24.dp, 55.dp),
                     checked = fabMenuExpanded,
-                    onCheckedChange = { fabMenuExpanded = !fabMenuExpanded }
+                    onCheckedChange = {
+                        haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+                        fabMenuExpanded = !fabMenuExpanded
+                    }
                 ) {
-                    val imageVector by remember {
-                        derivedStateOf {
-                            if (checkedProgress > 0.5f) Icons.Filled.Close else Icons.Filled.Add
-                        }
+                    val imageVector = if (checkedProgress > 0.5f) {
+                        ImageVector.vectorResource(R.drawable.close_filled)
+                    } else {
+                        ImageVector.vectorResource(R.drawable.add_filled)
                     }
                     Icon(
                         painter = rememberVectorPainter(imageVector),
@@ -309,12 +336,11 @@ fun FloatingActionMenuButton() {
         items.forEachIndexed { index, item ->
             FloatingActionButtonMenuItem(
                 modifier = Modifier
-                    .semantics{
-                        isTraversalGroup = true
+                    .semantics {
                         if (index == items.size - 1) {
                             customActions = listOf(
                                 CustomAccessibilityAction(
-                                    label = "Close menu",
+                                    label = toggleMenuLabel,
                                     action = {
                                         fabMenuExpanded = false
                                         true
@@ -327,7 +353,10 @@ fun FloatingActionMenuButton() {
                         if (index == 0) {
                             Modifier.onKeyEvent {
                                 if (
-                                    it.type == KeyEventType.KeyDown && (it.key == Key.DirectionUp || it.key == Key.NumPadDirectionUp || (it.isShiftPressed && it.key == Key.Tab))
+                                    it.type == KeyEventType.KeyDown &&
+                                    (it.key == Key.DirectionUp ||
+                                            it.key == Key.NumPadDirectionUp ||
+                                            (it.isShiftPressed && it.key == Key.Tab))
                                 ) {
                                     focusRequester.requestFocus()
                                     return@onKeyEvent true
@@ -338,23 +367,35 @@ fun FloatingActionMenuButton() {
                             Modifier
                         }
                     ),
-                onClick = { fabMenuExpanded = false },
-                icon = { Icon(item.first, contentDescription = null) },
-                text = { Text(text = item.second) }
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                    fabMenuExpanded = false
+                    item.onClick()
+                },
+                icon = { Icon(item.icon, contentDescription = null) },
+                text = { Text(text = stringResource(item.labelResId)) }
             )
         }
     }
 }
 
+private data class FabMenuItem(
+    val icon: ImageVector,
+    @StringRes val labelResId: Int,
+    val onClick: () -> Unit
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun HydroNavigationBar(
+    modifier: Modifier = Modifier,
     currentKey: NavigationRoutes,
     labelMode: NavBarLabelMode = NavBarLabelMode.ALWAYS,
     onTabSelected: (NavigationRoutes) -> Unit = {},
     onTabSwitch: () -> Unit = {}
 ) {
     ShortNavigationBar(
+        modifier = modifier,
         containerColor = MaterialTheme.colorScheme.surfaceContainerHigh
     ) {
         NavigationItem.entries.forEach { item ->

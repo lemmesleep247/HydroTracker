@@ -47,6 +47,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 import androidx.lifecycle.lifecycleScope
 import com.cemcakmak.hydrotracker.data.models.BeveragePreferences
+import com.cemcakmak.hydrotracker.data.models.ContainerPreset
+import com.cemcakmak.hydrotracker.data.models.VolumeUnit
 import androidx.navigationevent.NavigationEvent
 import com.cemcakmak.hydrotracker.data.database.repository.WaterIntakeRepository
 import com.cemcakmak.hydrotracker.data.database.repository.ContainerPresetRepository
@@ -77,6 +79,9 @@ import com.cemcakmak.hydrotracker.presentation.settings.SupportDevelopmentScreen
 import com.cemcakmak.hydrotracker.presentation.settings.HealthConnectDataScreen
 import com.cemcakmak.hydrotracker.presentation.settings.profile.ProfileSettingsScreen
 import com.cemcakmak.hydrotracker.presentation.settings.profile.crop.CropProfileImageScreen
+import com.cemcakmak.hydrotracker.presentation.common.dialogs.CustomWaterDialog
+import com.cemcakmak.hydrotracker.presentation.common.sheets.AddCustomBeverageBottomSheet
+import com.cemcakmak.hydrotracker.presentation.common.sheets.AddContainerPresetBottomSheet
 import com.cemcakmak.hydrotracker.presentation.onboarding.*
 import com.cemcakmak.hydrotracker.notifications.*
 import com.cemcakmak.hydrotracker.ui.theme.HydroTrackerTheme
@@ -301,7 +306,13 @@ fun HydroTrackerApp(
                 )
             )
             var homeShowCustomDialog by remember { mutableStateOf(false) }
-            var homeFabExpanded by remember { mutableStateOf(true) }
+            var showAddBeverageSheet by remember { mutableStateOf(false) }
+            var showAddContainerSheet by remember { mutableStateOf(false) }
+            var showPastEntryDialog by remember { mutableStateOf(false) }
+            var pastEntryDate by remember { mutableStateOf<String?>(null) }
+            var pastEntrySelectedBeverage by remember(activeBeverages) {
+                mutableStateOf(activeBeverages.firstOrNull { it.isWater } ?: activeBeverages.first())
+            }
 
             // Auto-check for updates on launch (throttled to once per 24h inside the repository).
             LaunchedEffect(Unit) {
@@ -354,8 +365,19 @@ fun HydroTrackerApp(
                 backStack = backStack,
                 currentKey = currentKey,
                 snackbarHostState = snackbarHostState,
-                fabExpanded = homeFabExpanded,
-                onAddCustomClick = { homeShowCustomDialog = true },
+                isHistoryDaySelected = historyUiState.selectedDate != null,
+                onAddCustomClick = {
+                    when (currentKey) {
+                        NavigationRoutes.Home -> homeShowCustomDialog = true
+                        NavigationRoutes.History -> {
+                            pastEntryDate = historyUiState.selectedDate
+                            showPastEntryDialog = true
+                        }
+                        else -> {}
+                    }
+                },
+                onAddBeverageClick = { showAddBeverageSheet = true },
+                onAddContainerClick = { showAddContainerSheet = true },
                 onTabSwitch = { wasPop = false },
                 autoHideNavBar = themePreferences.autoHideNavBar,
                 navBarLabelMode = themePreferences.navBarLabelMode
@@ -461,8 +483,7 @@ fun HydroTrackerApp(
                                     paddingValues = paddingValues,
                                     snackbarHostState = snackbarHostState,
                                     showCustomDialog = homeShowCustomDialog,
-                                    onCustomDialogChange = { homeShowCustomDialog = it },
-                                    onFabExpandedChange = { homeFabExpanded = it }
+                                    onCustomDialogChange = { homeShowCustomDialog = it }
                                 )
                             } ?: LoadingScreen()
                         }
@@ -783,6 +804,64 @@ fun HydroTrackerApp(
                         }
                     }
                 )
+                }
+
+                // FAB sheets / dialogues hosted at the scaffold level so they work from any tab.
+                if (showAddBeverageSheet) {
+                    AddCustomBeverageBottomSheet(
+                        onDismiss = { showAddBeverageSheet = false },
+                        onAdd = { name, hydrationMultiplier, iconKey ->
+                            coroutineScope.launch {
+                                customBeverageRepository.addBeverage(name, hydrationMultiplier, iconKey)
+                                showAddBeverageSheet = false
+                            }
+                        }
+                    )
+                }
+
+                if (showAddContainerSheet) {
+                    AddContainerPresetBottomSheet(
+                        volumeUnit = userProfile?.volumeUnit ?: VolumeUnit.MILLILITRES,
+                        onDismiss = { showAddContainerSheet = false },
+                        onAdd = { name, volume, iconType, iconName ->
+                            coroutineScope.launch {
+                                containerPresetRepository.addPreset(name, volume, iconType, iconName)
+                                showAddContainerSheet = false
+                            }
+                        }
+                    )
+                }
+
+                if (showPastEntryDialog && pastEntryDate != null && userProfile != null) {
+                    CustomWaterDialog(
+                        onDismiss = {
+                            showPastEntryDialog = false
+                            pastEntryDate = null
+                        },
+                        onConfirm = { amount ->
+                            coroutineScope.launch {
+                                val containerPreset = ContainerPreset(
+                                    name = "Custom",
+                                    volume = amount,
+                                    iconType = "DRAWABLE",
+                                    iconName = "water_filled"
+                                )
+                                waterIntakeRepository.addWaterIntake(
+                                    amount = amount,
+                                    containerPreset = containerPreset,
+                                    beverageKey = pastEntrySelectedBeverage.storageKey,
+                                    beverageMultiplier = pastEntrySelectedBeverage.storedMultiplier,
+                                    date = pastEntryDate
+                                )
+                                showPastEntryDialog = false
+                                pastEntryDate = null
+                            }
+                        },
+                        selectedBeverage = pastEntrySelectedBeverage,
+                        onBeverageChange = { pastEntrySelectedBeverage = it },
+                        volumeUnit = userProfile.volumeUnit,
+                        beverages = activeBeverages
+                    )
                 }
             }
         }

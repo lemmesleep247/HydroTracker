@@ -255,6 +255,10 @@
     <string name="nav_profile">Profile</string>
     <string name="nav_settings">Settings</string>
     <string name="nav_add_custom">Add Custom</string>
+    <string name="fab_menu_new_beverage">New Beverage</string>
+    <string name="fab_menu_new_container">New Container</string>
+    <string name="fab_menu_add_past_entry">Add Past Entry</string>
+    <string name="fab_menu_toggle_menu">Toggle menu</string>
     <string name="history_title">History &amp; Statistics</string>
 
     <!-- ============================================================================
@@ -390,6 +394,8 @@
     <string name="container_updated">Updated \"%1$s\" container</string>
     <string name="container_deleted">Deleted \"%1$s\" container</string>
     <string name="container_reset_done">Container presets reset to defaults</string>
+    <!-- Snackbars; %1$s = beverage name -->
+    <string name="beverage_added">Added \"%1$s\" beverage</string>
 
     <!-- Beverage types list/editor -->
     <string name="screen_beverage_types_title">Beverage Types</string>

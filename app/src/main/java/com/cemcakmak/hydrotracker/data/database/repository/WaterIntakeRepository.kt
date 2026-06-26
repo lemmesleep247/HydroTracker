@@ -89,12 +89,13 @@ class WaterIntakeRepository(
         containerPreset: ContainerPreset,
         beverageKey: String = BeverageType.WATER.name,
         beverageMultiplier: Double? = null,
-        note: String? = null
+        note: String? = null,
+        date: String? = null
     ): Result<Long> = withContext(Dispatchers.IO) {
         try {
             Log.d(TAG, "📝 Adding water intake: ${amount}ml (${containerPreset.name})")
 
-            val userDayString = getTodayUserDayString()
+            val userDayString = date ?: getTodayUserDayString()
             val entry = WaterIntakeEntry(
                 amount = amount,
                 timestamp = System.currentTimeMillis(),
