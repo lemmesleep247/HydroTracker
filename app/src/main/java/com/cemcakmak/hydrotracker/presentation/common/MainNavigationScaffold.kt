@@ -3,6 +3,7 @@
 
 package com.cemcakmak.hydrotracker.presentation.common
 
+import androidx.activity.compose.BackHandler
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
@@ -14,11 +15,14 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
-import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FloatingActionButtonMenu
+import androidx.compose.material3.FloatingActionButtonMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -27,10 +31,13 @@ import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.PlainTooltip
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.ToggleFloatingActionButton
+import androidx.compose.material3.ToggleFloatingActionButtonDefaults.animateIcon
 import androidx.compose.material3.TooltipBox
 import androidx.compose.material3.TooltipAnchorPosition
 import androidx.compose.material3.TooltipDefaults
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.animateFloatingActionButton
 import androidx.compose.material3.rememberTooltipState
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
@@ -38,18 +45,42 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.isShiftPressed
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
 import androidx.compose.ui.input.nestedscroll.NestedScrollSource
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.isTraversalGroup
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.paneTitle
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.semantics.traversalIndex
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -161,10 +192,12 @@ fun MainNavigationScaffold(
             },
             floatingActionButton = {
                 AnimatedVisibility(
-                    visible = currentKey == NavigationRoutes.Home,
+                    visible = currentKey != NavigationRoutes.Settings,
                     enter = scaleIn() + fadeIn(),
                     exit = scaleOut() + fadeOut()
                 ) {
+                    FloatingActionMenuButton()
+                    /*
                     ExtendedFloatingActionButton(
                         onClick = {
                             onAddCustomClick()
@@ -184,11 +217,131 @@ fun MainNavigationScaffold(
                             )
                         }
                     )
+
+                     */
                 }
             },
             snackbarHost = { HydroSnackbarHost(snackbarHostState) }
         ) { paddingValues ->
             content(paddingValues)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun FloatingActionMenuButton() {
+    val listState = rememberLazyListState()
+    val fabVisible by remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex == 0 || listState.canScrollForward == false
+        }
+    }
+    val focusRequester = remember { FocusRequester() }
+
+    val items =
+        listOf(
+            ImageVector.vectorResource(R.drawable.blender_filled) to "New beverage",
+            ImageVector.vectorResource(R.drawable.soft_drink_filled) to "New container",
+            ImageVector.vectorResource(R.drawable.add_filled) to "Add custom"
+        )
+
+    var fabMenuExpanded by rememberSaveable { mutableStateOf(false) }
+
+    BackHandler(fabMenuExpanded) { fabMenuExpanded = false }
+
+    FloatingActionButtonMenu(
+        expanded = fabMenuExpanded,
+        button = {
+            TooltipBox(
+                positionProvider = TooltipDefaults.rememberTooltipPositionProvider(
+                    if (fabMenuExpanded) {
+                        TooltipAnchorPosition.Start
+                    } else {
+                        TooltipAnchorPosition.Above
+                    }
+                ),
+                tooltip = {
+                    PlainTooltip(
+                        modifier =
+                            Modifier.semantics {
+                                // TODO(b/496338253): Remove this modifier once bug where
+                                //  tooltip text is not announced by a11y screen readers is
+                                //  resolved.
+                                liveRegion = LiveRegionMode.Assertive
+                                paneTitle = "Toggle menu"
+                            }
+                    ) {
+                        Text("Toggle menu")
+                    }
+                },
+                state = rememberTooltipState()
+            ) {
+                ToggleFloatingActionButton(
+                    modifier = Modifier
+                        .semantics {
+                            traversalIndex = -1f
+                            stateDescription = if (fabMenuExpanded) "Expanded" else "Collapsed"
+                            contentDescription = "Toggle menu"
+                        }
+                        .animateFloatingActionButton(
+                            visible = fabVisible || fabMenuExpanded,
+                            alignment = Alignment.BottomEnd
+                        )
+                        .focusRequester(focusRequester),
+                    checked = fabMenuExpanded,
+                    onCheckedChange = { fabMenuExpanded = !fabMenuExpanded }
+                ) {
+                    val imageVector by remember {
+                        derivedStateOf {
+                            if (checkedProgress > 0.5f) Icons.Filled.Close else Icons.Filled.Add
+                        }
+                    }
+                    Icon(
+                        painter = rememberVectorPainter(imageVector),
+                        contentDescription = null,
+                        modifier = Modifier.animateIcon({ checkedProgress })
+                    )
+                }
+            }
+        }
+    ) {
+        items.forEachIndexed { index, item ->
+            FloatingActionButtonMenuItem(
+                modifier = Modifier
+                    .semantics{
+                        isTraversalGroup = true
+                        if (index == items.size - 1) {
+                            customActions = listOf(
+                                CustomAccessibilityAction(
+                                    label = "Close menu",
+                                    action = {
+                                        fabMenuExpanded = false
+                                        true
+                                    }
+                                )
+                            )
+                        }
+                    }
+                    .then(
+                        if (index == 0) {
+                            Modifier.onKeyEvent {
+                                if (
+                                    it.type == KeyEventType.KeyDown && (it.key == Key.DirectionUp || it.key == Key.NumPadDirectionUp || (it.isShiftPressed && it.key == Key.Tab))
+                                ) {
+                                    focusRequester.requestFocus()
+                                    return@onKeyEvent true
+                                }
+                                return@onKeyEvent false
+                            }
+                        } else {
+                            Modifier
+                        }
+                    ),
+                onClick = { fabMenuExpanded = false },
+                icon = { Icon(item.first, contentDescription = null) },
+                text = { Text(text = item.second) }
+            )
         }
     }
 }
@@ -288,7 +441,7 @@ fun MainNavigationScaffoldPreview() {
     val backStack = rememberNavBackStack(NavigationRoutes.Home)
     MainNavigationScaffold(
         backStack = backStack,
-        currentKey = NavigationRoutes.History,
+        currentKey = NavigationRoutes.Home,
         snackbarHostState = remember { SnackbarHostState() },
         content = { _ ->
             Text(text = "Sample Content")

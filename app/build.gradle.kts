@@ -93,6 +93,7 @@ ksp{
 }
 
 dependencies {
+    implementation(libs.androidx.compose.runtime.saveable)
     // Core Android dependencies
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
