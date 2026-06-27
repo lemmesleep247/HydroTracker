@@ -20,39 +20,42 @@
 
 package com.cemcakmak.hydrotracker.presentation.common.dialogs
 
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuDefaults
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -83,21 +86,16 @@ fun CustomWaterDialog(
     val unitShortLabel = stringResource(volumeUnit.shortLabelResId)
 
     Dialog(onDismissRequest = onDismiss) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = MaterialTheme.shapes.extraLargeIncreased,
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            )
+        Surface(
+            shape = MaterialTheme.shapes.extraLargeIncreased
         ) {
             Column(
                 modifier = Modifier.padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
                     text = stringResource(R.string.home_dialog_add_custom_amount),
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
+                    style = MaterialTheme.typography.headlineSmallEmphasized
                 )
 
                 // Beverage Type Selection Dropdown
@@ -108,6 +106,7 @@ fun CustomWaterDialog(
                     onExpandedChange = { beverageExpanded = !beverageExpanded }
                 ) {
                     OutlinedTextField(
+                        shape = MaterialTheme.shapes.extraExtraLarge,
                         value = if (selectedBeverage.hasLabelRes) {
                             stringResource(selectedBeverage.labelResId)
                         } else {
@@ -133,44 +132,42 @@ fun CustomWaterDialog(
 
                     ExposedDropdownMenu(
                         expanded = beverageExpanded,
-                        onDismissRequest = { beverageExpanded = false }
+                        onDismissRequest = { beverageExpanded = false },
+                        containerColor = MenuDefaults.groupStandardContainerColor,
+                        shape = MenuDefaults.standaloneGroupShape,
                     ) {
-                        beverages.forEach { beverage ->
+                        val beverageCount = beverages.size
+                        beverages.forEachIndexed { index, beverage ->
+                            val itemLabel = if (beverage.hasLabelRes) {
+                                stringResource(beverage.labelResId)
+                            } else {
+                                beverage.displayName
+                            }
+
                             DropdownMenuItem(
-                                text = {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(12.dp)
-                                    ) {
-                                        Icon(
-                                            painter = painterResource(beverage.iconRes),
-                                            contentDescription = null,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-                                        Column {
-                                            Text(
-                                                text = if (beverage.hasLabelRes) {
-                                                    stringResource(beverage.labelResId)
-                                                } else {
-                                                    beverage.displayName
-                                                },
-                                                style = MaterialTheme.typography.bodyLarge
-                                            )
-                                            Text(
-                                                text = stringResource(
-                                                    R.string.home_label_hydration_percentage,
-                                                    (beverage.hydrationMultiplier * 100).toInt()
-                                                ),
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        }
-                                    }
-                                },
+                                selected = selectedBeverage.displayName == beverage.displayName,
                                 onClick = {
                                     onBeverageChange(beverage)
                                     beverageExpanded = false
-                                }
+                                },
+                                text = { Text(itemLabel) },
+                                shapes = MenuDefaults.itemShape(index, beverageCount),
+                                supportingText = {
+                                    Text(
+                                        stringResource(
+                                            R.string.home_label_hydration_percentage,
+                                            (beverage.hydrationMultiplier * 100).toInt()
+                                        )
+                                    )
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        painter = painterResource(beverage.iconRes),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(MenuDefaults.LeadingIconSize)
+                                    )
+                                },
+                                contentPadding = ExposedDropdownMenuDefaults.ItemContentPadding,
                             )
                         }
                     }
@@ -178,28 +175,18 @@ fun CustomWaterDialog(
 
                 // Show selected beverage info
                 if (!selectedBeverage.isWater) {
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                        ),
-                        modifier = Modifier.fillMaxWidth()
+                    Surface(
+                        modifier = Modifier.fillMaxWidth(),
+                        color = MaterialTheme.colorScheme.tertiaryContainer,
+                        shape = MaterialTheme.shapes.extraLargeIncreased
                     ) {
                         Column(
-                            modifier = Modifier.padding(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(4.dp)
+                            modifier = Modifier
+                                .padding(horizontal = 16.dp)
+                                .padding(vertical = 12.dp),
+                            verticalArrangement = Arrangement.spacedBy(4.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally
                         ) {
-                            Text(
-                                text = stringResource(
-                                    R.string.home_label_selected_beverage,
-                                    if (selectedBeverage.hasLabelRes) {
-                                        stringResource(selectedBeverage.labelResId)
-                                    } else {
-                                        selectedBeverage.displayName
-                                    }
-                                ),
-                                style = MaterialTheme.typography.titleSmall,
-                                fontWeight = FontWeight.Medium
-                            )
                             selectedBeverage.description?.let { description ->
                                 val resolvedDescription = if (selectedBeverage.hasDescriptionRes) {
                                     stringResource(selectedBeverage.descriptionResId)
@@ -208,8 +195,8 @@ fun CustomWaterDialog(
                                 }
                                 Text(
                                     text = resolvedDescription,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    style = MaterialTheme.typography.titleSmall,
+                                    color = MaterialTheme.colorScheme.onTertiaryContainer
                                 )
                             }
                             Text(
@@ -218,8 +205,7 @@ fun CustomWaterDialog(
                                     (selectedBeverage.hydrationMultiplier * 100).toInt()
                                 ),
                                 style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Medium
+                                color = MaterialTheme.colorScheme.tertiary
                             )
                         }
                     }
@@ -227,6 +213,7 @@ fun CustomWaterDialog(
 
                 OutlinedTextField(
                     value = amountText,
+                    shape = MaterialTheme.shapes.extraLargeIncreased,
                     onValueChange = {
                         amountText = it
                         isError = false
@@ -242,36 +229,123 @@ fun CustomWaterDialog(
                     modifier = Modifier.fillMaxWidth()
                 )
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End
-                ) {
-                    TextButton(onClick = onDismiss) {
-                        Text(stringResource(R.string.action_cancel))
-                    }
-
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    Button(
-                        shapes = ButtonDefaults.shapes(),
-                        onClick = {
-                            val amountInUserUnit = amountText.toDoubleOrNull()
-                            if (amountInUserUnit != null && amountInUserUnit > 0) {
-                                val amountInMl = VolumeUnitConverter.toMillilitres(amountInUserUnit, volumeUnit)
-                                if (amountInMl in minAmountMl..maxAmountMl) {
-                                    onConfirm(amountInMl)
-                                } else {
-                                    isError = true
-                                }
-                            } else {
-                                isError = true
-                            }
-                        }
-                    ) {
-                        Text(stringResource(R.string.action_add))
-                    }
-                }
+                ActionButtons(
+                    onDismiss = onDismiss,
+                    onConfirm = onConfirm,
+                    onValidationError = { isError = true },
+                    amountText = amountText,
+                    volumeUnit = volumeUnit
+                )
             }
         }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ActionButtons(
+    onDismiss: () -> Unit,
+    onConfirm: (Double) -> Unit,
+    onValidationError: () -> Unit,
+    amountText: String,
+    volumeUnit: VolumeUnit
+) {
+    val haptics = LocalHapticFeedback.current
+    val cancelInteractionSource = remember { MutableInteractionSource() }
+    val addInteractionSource = remember { MutableInteractionSource() }
+
+    val minAmountMl = 1.0
+    val maxAmountMl = 5000.0
+
+    var isInvalid by remember { mutableStateOf(false) }
+
+    LaunchedEffect(cancelInteractionSource) {
+        cancelInteractionSource.interactions.collect { interaction ->
+            when (interaction) {
+                is PressInteraction.Press -> haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+                is PressInteraction.Release -> haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                else -> {  }
+            }
+        }
+    }
+
+    LaunchedEffect(addInteractionSource) {
+        addInteractionSource.interactions.collect { interaction ->
+            when (interaction) {
+                is PressInteraction.Press -> haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+                is PressInteraction.Release -> if (isInvalid) haptics.performHapticFeedback(HapticFeedbackType.Reject) else haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                else -> {  }
+            }
+        }
+    }
+
+    ButtonGroup(
+        modifier = Modifier.fillMaxWidth(),
+        overflowIndicator = {}
+    ) {
+        val scope = this
+        customItem(
+            buttonGroupContent = {
+                FilledTonalButton(
+                    onClick = onDismiss,
+                    shapes = ButtonDefaults.shapes(),
+                    interactionSource = cancelInteractionSource,
+                    modifier = with(scope) {
+                        Modifier
+                            .weight(1f)
+                            .height(46.dp)
+                            .animateWidth(interactionSource = cancelInteractionSource)
+                    }
+                ) {
+                    Text(
+                        text = stringResource(R.string.action_cancel),
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                }
+            },
+            menuContent = {}
+        )
+
+        customItem(
+            buttonGroupContent = {
+                Button(
+                    onClick = {
+                        val amountInUserUnit = amountText.toDoubleOrNull()
+                        if (amountInUserUnit != null && amountInUserUnit > 0) {
+                            val amountInMl = VolumeUnitConverter.toMillilitres(amountInUserUnit, volumeUnit)
+                            if (amountInMl in minAmountMl..maxAmountMl) {
+                                onConfirm(amountInMl)
+                            } else {
+                                isInvalid = true
+                                onValidationError()
+                            }
+                        } else {
+                            onValidationError()
+                            isInvalid = true
+                        }
+                    },
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    ),
+                    shapes = ButtonDefaults.shapes(),
+                    interactionSource = addInteractionSource,
+                    modifier = with(scope) {
+                        Modifier
+                            .weight(1f)
+                            .height(46.dp)
+                            .animateWidth(interactionSource = addInteractionSource)
+                    }
+                ) {
+                    Text(
+                        text = stringResource(R.string.action_add),
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                }
+            },
+            menuContent = {}
+        )
     }
 }
