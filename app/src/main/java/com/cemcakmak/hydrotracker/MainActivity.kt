@@ -89,7 +89,7 @@ import com.cemcakmak.hydrotracker.health.HealthConnectManager
 import androidx.core.net.toUri
 
 // Navigation animation tuning
-private const val TAB_SWITCH_DURATION = 400
+internal const val TAB_SWITCH_DURATION = 400
 
 private val TOP_LEVEL_TAB_KEYS: Set<NavigationRoutes> = setOf(
     NavigationRoutes.Home,

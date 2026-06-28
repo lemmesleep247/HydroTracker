@@ -6,6 +6,11 @@ package com.cemcakmak.hydrotracker.presentation.common
 import androidx.activity.compose.BackHandler
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
@@ -83,6 +88,7 @@ import androidx.navigation3.runtime.NavBackStack
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.rememberNavBackStack
 import com.cemcakmak.hydrotracker.R
+import com.cemcakmak.hydrotracker.TAB_SWITCH_DURATION
 import com.cemcakmak.hydrotracker.data.models.NavBarLabelMode
 
 /**
@@ -95,6 +101,11 @@ val LocalSettingsHubBlur = compositionLocalOf<MutableState<Dp>> {
 
 private const val NAV_BAR_ENTER_DURATION_MS = 250
 private const val NAV_BAR_EXIT_DURATION_MS = 200
+
+private val topBarEnter = fadeIn(tween(TAB_SWITCH_DURATION)) + slideInVertically { -it }
+private val topBarExit = fadeOut(tween(TAB_SWITCH_DURATION)) + slideOutVertically { -it }
+private val bottomBarEnter = fadeIn(tween(TAB_SWITCH_DURATION)) + slideInVertically { it }
+private val bottomBarExit = fadeOut(tween(TAB_SWITCH_DURATION)) + slideOutVertically { it }
 
 @OptIn(ExperimentalMaterial3ExpressiveApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -116,6 +127,7 @@ fun MainNavigationScaffold(
         NavigationRoutes.History,
         NavigationRoutes.Settings
     )
+    val shouldShowTopBar = currentKey == NavigationRoutes.History || currentKey == NavigationRoutes.Settings
 
     // Auto-hide on scroll: hide on scrolling down, reveal on scrolling up.
     // This state is shared by the navigation bar (when auto-hide is enabled)
@@ -174,7 +186,11 @@ fun MainNavigationScaffold(
         Scaffold(
             modifier = nestedScrollModifier,
             topBar = {
-                if (currentKey == NavigationRoutes.History || currentKey == NavigationRoutes.Settings) {
+                AnimatedVisibility(
+                    visible = shouldShowTopBar,
+                    enter = topBarEnter,
+                    exit = topBarExit
+                ) {
                     MainTabTopAppBar(
                         titleResId = if (currentKey == NavigationRoutes.History) {
                             R.string.nav_history
@@ -195,7 +211,11 @@ fun MainNavigationScaffold(
                 }
             },
             bottomBar = {
-                if (shouldShowBottomBar) {
+                AnimatedVisibility(
+                    visible = shouldShowBottomBar,
+                    enter = bottomBarEnter,
+                    exit = bottomBarExit
+                ) {
                     HydroNavigationBar(
                         modifier = Modifier
                             .onSizeChanged { barHeightPx.floatValue = it.height.toFloat() }
