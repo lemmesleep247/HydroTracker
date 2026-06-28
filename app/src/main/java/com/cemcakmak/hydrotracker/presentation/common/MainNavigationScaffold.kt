@@ -117,14 +117,16 @@ fun MainNavigationScaffold(
         NavigationRoutes.Settings
     )
 
-    // Auto-hide on scroll: hide the bar when scrolling down, reveal when scrolling up.
-    val barVisibleByScroll = remember { mutableStateOf(true) }
-    LaunchedEffect(currentKey) { barVisibleByScroll.value = true }
+    // Auto-hide on scroll: hide on scrolling down, reveal on scrolling up.
+    // This state is shared by the navigation bar (when auto-hide is enabled)
+    // and the floating action button (when auto-hide is disabled).
+    val scrollDirectionVisible = remember { mutableStateOf(true) }
+    LaunchedEffect(currentKey) { scrollDirectionVisible.value = true }
     val autoHideConnection = remember {
         object : NestedScrollConnection {
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
-                if (available.y < -0.5f) barVisibleByScroll.value = false
-                else if (available.y > 0.5f) barVisibleByScroll.value = true
+                if (available.y < -0.5f) scrollDirectionVisible.value = false
+                else if (available.y > 0.5f) scrollDirectionVisible.value = true
                 return Offset.Zero
             }
         }
@@ -134,13 +136,17 @@ fun MainNavigationScaffold(
     val historyScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     val settingsScrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
 
+    // Attach the shared auto-hide connection whenever either the nav bar or the
+    // FAB needs it. Under the current rules one of them is always active, so the
+    // connection is attached unconditionally; it only observes deltas and does
+    // not consume scroll events.
     val nestedScrollModifier = run {
         val base = when (currentKey) {
             NavigationRoutes.History -> Modifier.nestedScroll(historyScrollBehavior.nestedScrollConnection)
             NavigationRoutes.Settings -> Modifier.nestedScroll(settingsScrollBehavior.nestedScrollConnection)
             else -> Modifier
         }
-        if (autoHideNavBar) base.nestedScroll(autoHideConnection) else base
+        base.nestedScroll(autoHideConnection)
     }
 
     val settingsBlurState = remember { mutableStateOf(0.dp) }
@@ -149,16 +155,20 @@ fun MainNavigationScaffold(
     // Only used for graphicsLayer translation — not for layout constraints — so no feedback loop.
     val barHeightPx = remember { mutableFloatStateOf(0f) }
     val hideProgress by animateFloatAsState(
-        targetValue = if (autoHideNavBar && !barVisibleByScroll.value) 1f else 0f,
+        targetValue = if (autoHideNavBar && !scrollDirectionVisible.value) 1f else 0f,
         animationSpec = tween(
-            durationMillis = if (barVisibleByScroll.value) NAV_BAR_ENTER_DURATION_MS else NAV_BAR_EXIT_DURATION_MS,
-            easing = if (barVisibleByScroll.value) FastOutSlowInEasing else FastOutLinearInEasing
+            durationMillis = if (scrollDirectionVisible.value) NAV_BAR_ENTER_DURATION_MS else NAV_BAR_EXIT_DURATION_MS,
+            easing = if (scrollDirectionVisible.value) FastOutSlowInEasing else FastOutLinearInEasing
         ),
         label = "navBarHide"
     )
 
     val fabVisible = currentKey == NavigationRoutes.Home ||
             (currentKey == NavigationRoutes.History && isHistoryDaySelected)
+
+    // FAB auto-hide mirrors the navigation bar's direction-based logic, but is
+    // only active when the navigation bar itself is not auto-hiding.
+    val effectiveFabVisible = fabVisible && (autoHideNavBar || scrollDirectionVisible.value)
 
     CompositionLocalProvider(LocalSettingsHubBlur provides settingsBlurState) {
         Scaffold(
@@ -208,10 +218,11 @@ fun MainNavigationScaffold(
             floatingActionButton = {
                 FloatingActionMenuButton(
                     modifier = Modifier.graphicsLayer {
+                        translationX = 10.dp.toPx()
                         translationY = barHeightPx.floatValue * hideProgress + 16.dp.toPx()
                     },
                     currentKey = currentKey,
-                    fabVisible = fabVisible,
+                    fabVisible = effectiveFabVisible,
                     onAddCustomClick = onAddCustomClick,
                     onAddBeverageClick = onAddBeverageClick,
                     onAddContainerClick = onAddContainerClick
