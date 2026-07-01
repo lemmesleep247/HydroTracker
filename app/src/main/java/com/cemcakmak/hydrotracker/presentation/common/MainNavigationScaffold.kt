@@ -4,6 +4,7 @@
 package com.cemcakmak.hydrotracker.presentation.common
 
 import androidx.activity.compose.BackHandler
+import kotlinx.coroutines.delay
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
@@ -84,6 +85,7 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import com.cemcakmak.hydrotracker.R
 import com.cemcakmak.hydrotracker.TAB_SWITCH_DURATION
 import com.cemcakmak.hydrotracker.data.models.NavBarLabelMode
+import kotlin.time.Duration.Companion.milliseconds
 
 private const val NAV_BAR_ENTER_DURATION_MS = 250
 private const val NAV_BAR_EXIT_DURATION_MS = 200
@@ -145,6 +147,16 @@ fun MainNavigationScaffold(
     // only active when the navigation bar itself is not auto-hiding.
     val effectiveFabVisible = fabVisible && (autoHideNavBar || scrollDirectionVisible.value)
 
+    var fabInteractive by remember { mutableStateOf(effectiveFabVisible) }
+    LaunchedEffect(effectiveFabVisible) {
+        if (effectiveFabVisible) {
+            fabInteractive = true
+        } else {
+            delay(300.milliseconds) // Wait for the built-in animateFloatingActionButton scale/alpha to finish
+            fabInteractive = false
+        }
+    }
+
     Scaffold(
         modifier = Modifier.nestedScroll(autoHideConnection),
         bottomBar = {
@@ -174,10 +186,12 @@ fun MainNavigationScaffold(
         },
         floatingActionButton = {
             FloatingActionMenuButton(
-                modifier = Modifier.graphicsLayer {
-                    translationX = 10.dp.toPx()
-                    translationY = barHeightPx.floatValue * hideProgress + 16.dp.toPx()
-                },
+                modifier = Modifier
+                    .graphicsLayer {
+                        translationX = 10.dp.toPx()
+                        translationY = barHeightPx.floatValue * hideProgress + 16.dp.toPx()
+                    }
+                    .then(if (!fabInteractive) Modifier.size(0.dp) else Modifier),
                 currentKey = currentKey,
                 fabVisible = effectiveFabVisible,
                 onAddCustomClick = onAddCustomClick,
