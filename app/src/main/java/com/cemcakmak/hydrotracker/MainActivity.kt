@@ -23,6 +23,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.text.ExperimentalTextApi
 import com.cemcakmak.hydrotracker.utils.AppLocale
 import com.cemcakmak.hydrotracker.utils.SmartComposeHapticFeedback
@@ -290,6 +292,14 @@ fun HydroTrackerApp(
 
     val systemHaptics = LocalHapticFeedback.current
     val isHapticsEnabled = appPreferences?.hapticsEnabled ?: true
+
+    com.cemcakmak.hydrotracker.utils.SmartHaptics.isGloballyEnabled = isHapticsEnabled
+    val view = LocalView.current
+    if (!view.isInEditMode) {
+        SideEffect {
+            view.isHapticFeedbackEnabled = isHapticsEnabled
+        }
+    }
     val proxyHaptics = remember(systemHaptics, isHapticsEnabled) {
         object : androidx.compose.ui.hapticfeedback.HapticFeedback {
             override fun performHapticFeedback(hapticFeedbackType: androidx.compose.ui.hapticfeedback.HapticFeedbackType) {

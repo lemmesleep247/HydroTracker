@@ -28,6 +28,8 @@ import androidx.annotation.RequiresApi
  */
 object SmartHaptics {
 
+    var isGloballyEnabled: Boolean = true
+
     // OEMs known to have broken or generic HapticFeedbackConstants mapping for 3rd-party apps.
     private val BROKEN_OEM_SET = setOf(
         "xiaomi"
@@ -44,6 +46,7 @@ object SmartHaptics {
      * @param token The semantic haptic token to play.
      */
     fun perform(context: Context, token: SmartHapticToken) {
+        if (!isGloballyEnabled) return
         when (resolveTier(context, token)) {
             // Tier 1: HapticFeedbackConstants on good OEMs.
             ForcedTier.CONSTANTS -> {
@@ -112,6 +115,7 @@ object SmartHaptics {
      * Play a raw [HapticFeedbackConstants] value through the SmartHaptics pipeline.
      */
     fun performRaw(context: Context, constant: Int) {
+        if (!isGloballyEnabled) return
         val token = constant.toSmartHapticToken()
         if (token != null) {
             perform(context, token)
@@ -131,6 +135,7 @@ object SmartHaptics {
      * Used by the haptic test screen to bypass OEM-aware routing and compare tiers in isolation.
      */
     fun performForced(context: Context, token: SmartHapticToken, tier: ForcedTier) {
+        if (!isGloballyEnabled) return
         when (tier) {
             ForcedTier.AUTO -> perform(context, token)
             ForcedTier.CONSTANTS -> {
@@ -178,6 +183,7 @@ object SmartHaptics {
      */
     @RequiresApi(Build.VERSION_CODES.S)
     fun playPrimitiveSteps(context: Context, steps: List<PrimitiveStep>) {
+        if (!isGloballyEnabled) return
         if (steps.isEmpty()) return
         val comp = VibrationEffect.startComposition()
         steps.forEach { step ->
@@ -349,7 +355,7 @@ object SmartHaptics {
 
             // The user is executing a swipe/drag-style gesture, such as pull-to-refresh,
             // where the gesture action is "eligible" at a certain threshold of movement,
-            // and can be canceled by moving back past the threshold. Snap into "eligible".
+            // and can be cancelled by moving back past the threshold. Snap into "eligible".
             SmartHapticToken.GestureThresholdActive -> {
                 comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.5f)
                 comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_CLICK, 0.8f)
@@ -357,7 +363,7 @@ object SmartHaptics {
 
             // The user is executing a swipe/drag-style gesture, such as pull-to-refresh,
             // where the gesture action is "eligible" at a certain threshold of movement,
-            // and can be canceled by moving back past the threshold. Un-snap (mirrors Active).
+            // and can be cancelled by moving back past the threshold. Un-snap (mirrors Active).
             SmartHapticToken.GestureThresholdDeactive -> {
                 comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_TICK, 0.4f)
                 comp.addPrimitive(VibrationEffect.Composition.PRIMITIVE_QUICK_FALL, 0.3f)
