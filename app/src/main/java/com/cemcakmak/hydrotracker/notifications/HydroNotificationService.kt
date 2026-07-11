@@ -127,6 +127,37 @@ class HydroNotificationService(private val context: Context) {
     }
 
     /**
+     * Show a brief post-quick-add feedback notification.
+     *
+     * The quick-add buttons are removed, the title shows the amount that was added,
+     * and the message shows the updated intake versus the daily goal. The notification
+     * auto-dismisses after [timeoutAfterMs].
+     */
+    fun showQuickAddFeedbackNotification(
+        userProfile: UserProfile,
+        waterProgress: WaterProgress,
+        addedAmount: Double,
+        timeoutAfterMs: Long = 3000L
+    ) {
+        if (!NotificationPermissionManager.hasNotificationPermission(context)) {
+            return
+        }
+
+        val notification = buildQuickAddFeedbackNotification(
+            userProfile,
+            waterProgress,
+            addedAmount,
+            timeoutAfterMs
+        )
+
+        try {
+            notificationManager.notify(NOTIFICATION_ID, notification)
+        } catch (e: SecurityException) {
+            println("Quick-add feedback notification permission denied: ${e.message}")
+        }
+    }
+
+    /**
      * Show a daily fun-fact notification.
      */
     fun showFunFact() {
@@ -190,6 +221,7 @@ class HydroNotificationService(private val context: Context) {
             .setStyle(progressStyle)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
+            .setOnlyAlertOnce(true)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
@@ -220,6 +252,82 @@ class HydroNotificationService(private val context: Context) {
         }
 
         return builder.build()
+    }
+
+    /**
+     * Build a post-quick-add feedback notification.
+     *
+     * The title shows the amount that was added, the message shows the updated
+     * intake versus the daily goal, and the progress bar reflects the new progress.
+     * No quick-add actions are included, and the subtext is omitted.
+     */
+    private fun buildQuickAddFeedbackNotification(
+        userProfile: UserProfile,
+        waterProgress: WaterProgress,
+        addedAmount: Double,
+        timeoutAfterMs: Long
+    ): android.app.Notification {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            0,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val progress = (waterProgress.progress * 100).toInt().coerceIn(0, 100)
+        val progressColor = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            ContextCompat.getColor(context, android.R.color.system_accent1_500)
+        } else {
+            0xFF00B4D8.toInt()
+        }
+        val progressStyle = NotificationCompat.ProgressStyle()
+            .setStyledByProgress(true)
+            .setProgress(progress)
+            .setProgressEndIcon(
+                IconCompat.createWithResource(context, R.drawable.award_star).setTint(progressColor)
+            )
+            .setProgressSegments(
+                listOf(
+                    NotificationCompat.ProgressStyle.Segment(25),
+                    NotificationCompat.ProgressStyle.Segment(25),
+                    NotificationCompat.ProgressStyle.Segment(25),
+                    NotificationCompat.ProgressStyle.Segment(25)
+                )
+            )
+
+        val amountText = VolumeUnitConverter.format(context, addedAmount, userProfile.volumeUnit)
+        val title = context.getString(R.string.notification_quick_add_feedback_title, amountText)
+        val currentText = VolumeUnitConverter.format(
+            context,
+            waterProgress.currentIntake,
+            userProfile.volumeUnit
+        )
+        val goalText = VolumeUnitConverter.format(context, waterProgress.dailyGoal, userProfile.volumeUnit)
+        val message = context.getString(
+            R.string.notification_quick_add_feedback_message,
+            currentText,
+            goalText
+        )
+
+        return NotificationCompat.Builder(context, REMINDER_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_stat_name)
+            .setContentTitle(title)
+            .setContentText(message)
+            .setStyle(progressStyle)
+            .setContentIntent(pendingIntent)
+            .setAutoCancel(true)
+            .setOnlyAlertOnce(true)
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setColorized(true)
+            .setColor(progressColor)
+            .setTimeoutAfter(timeoutAfterMs)
+            .build()
     }
 
     /**

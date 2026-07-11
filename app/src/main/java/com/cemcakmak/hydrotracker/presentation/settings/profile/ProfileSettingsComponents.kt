@@ -24,6 +24,7 @@ import android.Manifest
 import android.content.pm.PackageManager
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.EaseInOut
@@ -719,7 +720,7 @@ internal fun UpdateProfilePictureBottomSheet(
 
         // Image picker launcher
         val imagePickerLauncher = rememberLauncherForActivityResult(
-            contract = ActivityResultContracts.GetContent()
+            contract = ActivityResultContracts.PickVisualMedia()
         ) { uri ->
             uri?.let { selectedUri ->
                 // Pass the original URI to the cropper.
@@ -744,7 +745,13 @@ internal fun UpdateProfilePictureBottomSheet(
                 com.cemcakmak.hydrotracker.presentation.settings.SettingsGroupCard(
                     index = 0,
                     size = 2,
-                    onClick = { imagePickerLauncher.launch("image/*") }
+                    onClick = {
+                        imagePickerLauncher.launch(
+                            PickVisualMediaRequest(
+                                ActivityResultContracts.PickVisualMedia.ImageOnly
+                            )
+                        )
+                    }
                 ) {
                     Row(
                         modifier = Modifier

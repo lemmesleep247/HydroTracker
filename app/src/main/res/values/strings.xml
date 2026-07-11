@@ -910,14 +910,14 @@
     <!-- %1$d = remaining milliliters -->
     <string name="notification_minimal_remaining">%1$s remaining</string>
 
-    <!-- Quick-add success notification -->
-    <string name="notification_quick_add_title">Water Added!</string>
-    <!-- %1$s = formatted amount with unit, e.g. "500 ml" -->
-    <string name="notification_quick_add_text">Added %1$s to your daily intake</string>
     <!-- %1$s = formatted amount with unit, e.g. "500 ml" -->
     <string name="notification_action_add">Add %1$s</string>
     <string name="notification_quick_add_preset_name">Quick Add</string>
     <string name="notification_quick_add_note">Added from notification</string>
+    <!-- %1$s = formatted amount with unit, e.g. "500 ml" -->
+    <string name="notification_quick_add_feedback_title">Added %1$s</string>
+    <!-- %1$s = formatted current intake, %2$s = formatted daily goal -->
+    <string name="notification_quick_add_feedback_message">%1$s / %2$s</string>
 
     <!-- Gentle reminder titles -->
     <string-array name="notification_gentle_titles">

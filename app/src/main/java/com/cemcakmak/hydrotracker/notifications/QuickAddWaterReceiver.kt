@@ -6,13 +6,10 @@ package com.cemcakmak.hydrotracker.notifications
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import androidx.core.app.NotificationManagerCompat
 import com.cemcakmak.hydrotracker.R
 import com.cemcakmak.hydrotracker.data.database.DatabaseInitializer
 import com.cemcakmak.hydrotracker.data.models.ContainerPreset
-import com.cemcakmak.hydrotracker.data.models.VolumeUnit
 import com.cemcakmak.hydrotracker.data.repository.UserRepository
-import com.cemcakmak.hydrotracker.utils.VolumeUnitConverter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
@@ -66,16 +63,18 @@ class QuickAddWaterReceiver : BroadcastReceiver() {
                 )
 
                 result.onSuccess {
-                    // Cancel the notification after successful addition
-                    val notificationManager = NotificationManagerCompat.from(context)
-                    notificationManager.cancel(HydroNotificationService.NOTIFICATION_ID)
-
-                    // Show a brief success notification
-                    showSuccessNotification(context, amount)
-
-                    // Reschedule next reminder with a dynamically calculated interval
+                    // Show a brief feedback notification with the updated progress
                     val userProfile = userRepository.userProfile.first()
                     if (userProfile != null) {
+                        val updatedProgress = waterIntakeRepository.getTodayProgress().first()
+
+                        HydroNotificationService(context).showQuickAddFeedbackNotification(
+                            userProfile,
+                            updatedProgress,
+                            amount
+                        )
+
+                        // Reschedule next reminder with a dynamically calculated interval
                         HydroNotificationScheduler.onWaterEntryAdded(
                             context,
                             userProfile,
@@ -95,33 +94,4 @@ class QuickAddWaterReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun showSuccessNotification(context: Context, amount: Double) {
-
-        // Format the quick-add amount in the user's preferred unit.
-        val userRepository = UserRepository(context)
-        val volumeUnit = try {
-            kotlinx.coroutines.runBlocking {
-                userRepository.userProfile.first()?.volumeUnit ?: VolumeUnit.MILLILITRES
-            }
-        } catch (_: Exception) {
-            VolumeUnit.MILLILITRES
-        }
-        val amountText = VolumeUnitConverter.format(context, amount, volumeUnit)
-
-        // Create a simple success notification that auto-dismisses
-        val successNotification = android.app.Notification.Builder(context, HydroNotificationService.REMINDER_CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_menu_save) // System checkmark icon
-            .setContentTitle(context.getString(R.string.notification_quick_add_title))
-            .setContentText(context.getString(R.string.notification_quick_add_text, amountText))
-            .setAutoCancel(true)
-            .setTimeoutAfter(3000) // Auto dismiss after 3 seconds
-            .build()
-
-        val notificationManager = NotificationManagerCompat.from(context)
-        try {
-            notificationManager.notify(9999, successNotification) // Different ID for success notification
-        } catch (e: SecurityException) {
-            println("Cannot show success notification: ${e.message}")
-        }
-    }
 }
