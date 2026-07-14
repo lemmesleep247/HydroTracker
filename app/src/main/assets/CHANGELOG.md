@@ -21,6 +21,9 @@ Added
   5. JetBrains Mono
 - Auto-hiding navigation bar and FAB on scroll
 - Extended colour palette with success and warning semantic colours
+- Haptic feedback toggle
+- Optional subtle borders around cards in AMOLED mode
+- Font warning for Xiaomi group devices (HyperOS/MIUI) where custom fonts don't work as intended
 #### Display & Locale
 - Multi-language and localization support
 - Multiple date format options:
@@ -34,7 +37,6 @@ Added
   2. British Imperial System
   3. US Customary System:
      - US fluid ounces
-     - US cups
 #### Quick Add Customization
 - Custom beverage type creation and management
 - Custom container icons
@@ -52,6 +54,14 @@ Added
 - Ability to choose notification mode:
   1. Automatic (Default)
   2. Custom interval
+- Progress-centric reminder notifications that show your daily goal progress
+- Quick-add actions directly from the reminder notification
+- Optional daily hydration fun facts
+#### Data Management
+- Export your entries as CSV or JSON
+- Import CSV or JSON backups with automatic duplicate detection
+- Delete entries before a chosen date
+- Delete local data only, Health Connect data only, or everything
 #### Support Development
 - Support Development page
 - Rate on Google Play and share buttons
@@ -74,6 +84,11 @@ Added
 - Animated goal-met badge in the history screen
 - Staggered bar animations for weekly, monthly, and yearly charts
 - Ability to add, remove, and edit past entries from History page
+### Statistics
+- New Statistics tab with all-time insights:
+  - Overview: current streak, daily average, total intake, success rate and days tracked
+  - Beverage breakdown doughnut chart with dedicated colours for each beverage type
+  - Container usage card showing your most-used containers
 
 Changed
 - Switched default font to Google Sans Flex
@@ -85,6 +100,19 @@ Changed
 - Overhauled notification settings UI with updated time pickers
 - Overhaul home page with container carousel, new beverage selector and more
 - Update every sheet and dialogue UI
+- Switched to squircle shapes throughout the app
+- Smoother tab switch animations with animated top and bottom bars
+- Larger FAB icon with a rotation animation
+- Replaced in-app snackbars with system toast messages
+- Profile photo selection now uses the Android Photo Picker — no storage permission required
+- Overhauled the notification system with goal-aware, progress-centric reminders
+- Improved Health Connect sync with faster imports and a pull-to-refresh indicator on Home
+- Redesigned the update available screen
+- Updated edit and delete entry dialogues
+- Updated libraries
+
+Fixed
+- Fixed FAB visibility and animation glitches
 
 [1.0.6.1]
 • Small preparations for F-Droid release
