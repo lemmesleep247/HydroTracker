@@ -75,14 +75,18 @@ import android.content.Context
 import android.os.Build
 import android.view.RoundedCorner
 import android.view.WindowManager
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Shape
 import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import com.cemcakmak.hydrotracker.R
+import com.cemcakmak.hydrotracker.data.models.DarkModePreference
 import com.cemcakmak.hydrotracker.data.models.EdgeEffect
 import com.cemcakmak.hydrotracker.data.models.ThemePreferences
 import com.cemcakmak.hydrotracker.presentation.common.effect.BackdropBlurState
@@ -92,8 +96,9 @@ import com.cemcakmak.hydrotracker.presentation.common.effect.backdropBlur
 import com.cemcakmak.hydrotracker.presentation.common.effect.backdropSource
 import com.cemcakmak.hydrotracker.presentation.common.effect.rememberBackdropBlurState
 import com.cemcakmak.hydrotracker.presentation.common.groupCorners
-import com.cemcakmak.hydrotracker.presentation.common.getGroupShape
+import com.cemcakmak.hydrotracker.presentation.common.shapes.PillShape
 import com.cemcakmak.hydrotracker.presentation.common.shapes.SquircleShape
+import com.cemcakmak.hydrotracker.ui.theme.LocalThemePreferences
 
 /**
  * Shared UI building blocks for the settings sub-screens (Appearance, Display & Locale, …).
@@ -291,14 +296,37 @@ internal fun SettingsSectionHeader(title: String) {
     )
 }
 
+/**
+ * The shared AMOLED hairline border for grouped settings cards. Returns null unless the app is
+ * in a dark theme with both AMOLED mode and the surface-borders preference enabled, so every
+ * settings group gets the same treatment without each screen wiring it up. Reads the active
+ * preferences from [LocalThemePreferences], provided by `HydroTrackerTheme`.
+ */
+@Composable
+internal fun amoledGroupBorder(): BorderStroke? {
+    val themePreferences = LocalThemePreferences.current
+    val isDark = when (themePreferences.darkMode) {
+        DarkModePreference.DARK -> true
+        DarkModePreference.LIGHT -> false
+        DarkModePreference.SYSTEM -> isSystemInDarkTheme()
+    }
+    return if (themePreferences.usePureBlack && themePreferences.showAmoledBorders && isDark) {
+        BorderStroke(0.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f))
+    } else {
+        null
+    }
+}
+
 @Composable
 internal fun SettingsGroupCard(
     index: Int,
     size: Int,
+    isPill: Boolean = false,
     onClick: (() -> Unit)? = null,
     content: @Composable () -> Unit
 ) {
-    val shape = getGroupShape(index, size)
+    val shape = if (isPill) PillShape else getShapeForIndex(index, size)
+    val border = amoledGroupBorder()
     val modifier = Modifier
         .fillMaxWidth()
         .padding(bottom = 2.dp)
@@ -307,14 +335,45 @@ internal fun SettingsGroupCard(
             onClick = onClick,
             shape = shape,
             tonalElevation = 2.dp,
+            border = border,
             modifier = modifier
         ) { content() }
     } else {
         Surface(
             shape = shape,
             tonalElevation = 2.dp,
+            border = border,
             modifier = modifier
         ) { content() }
+    }
+}
+
+internal fun getShapeForIndex(
+    index: Int,
+    size: Int,
+    outerRadius: Dp = 30.dp,
+    innerRadius: Dp = 6.dp
+): Shape {
+    return when {
+        size == 1 -> SquircleShape(
+            topStart = CornerSize(outerRadius),
+            topEnd = CornerSize(outerRadius),
+            bottomStart = CornerSize(outerRadius),
+            bottomEnd = CornerSize(outerRadius)
+        )
+        index == 0 -> SquircleShape(
+            topStart = CornerSize(outerRadius),
+            topEnd = CornerSize(outerRadius),
+            bottomStart = CornerSize(innerRadius),
+            bottomEnd = CornerSize(innerRadius)
+        )
+        index == size - 1 -> SquircleShape(
+            topStart = CornerSize(innerRadius),
+            topEnd = CornerSize(innerRadius),
+            bottomStart = CornerSize(outerRadius),
+            bottomEnd = CornerSize(outerRadius)
+        )
+        else -> RoundedCornerShape(innerRadius)
     }
 }
 

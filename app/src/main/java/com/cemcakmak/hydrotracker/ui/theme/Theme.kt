@@ -13,6 +13,7 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -235,6 +236,12 @@ private fun extendedColorScheme(
     )
 }
 
+/**
+ * The active [ThemePreferences], provided by [HydroTrackerTheme] so deeply nested components
+ * (e.g. shared settings cards) can react to appearance settings without explicit parameters.
+ */
+val LocalThemePreferences = compositionLocalOf { ThemePreferences() }
+
 @Composable
 fun HydroTrackerTheme(
     themePreferences: ThemePreferences = ThemePreferences(),
@@ -308,7 +315,10 @@ fun HydroTrackerTheme(
         }
     }
 
-    CompositionLocalProvider(LocalExtendedColorScheme provides extendedColors) {
+    CompositionLocalProvider(
+        LocalExtendedColorScheme provides extendedColors,
+        LocalThemePreferences provides themePreferences
+    ) {
         MaterialTheme(
             colorScheme = colorScheme,
             typography = typography,

@@ -281,6 +281,8 @@
     <string name="appearance_color_header">Color</string>
     <string name="appearance_amoled_title">AMOLED Mode</string>
     <string name="appearance_amoled_desc">True black backgrounds in dark mode</string>
+    <string name="appearance_amoled_borders_title">Surface Borders</string>
+    <string name="appearance_amoled_borders_desc">Subtle borders around cards in AMOLED mode</string>
     <string name="appearance_font_header">Font</string>
     <string name="appearance_navbar_header">Navigation bar</string>
     <string name="appearance_autohide_title">Auto-hide on scroll</string>

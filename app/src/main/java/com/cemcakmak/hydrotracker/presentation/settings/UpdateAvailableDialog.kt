@@ -29,17 +29,15 @@ import android.view.WindowManager
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.Animatable
-import kotlinx.coroutines.delay
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -52,21 +50,15 @@ import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialShapes
+import androidx.compose.material3.LoadingIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.toPath
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Matrix
-import androidx.compose.ui.graphics.Outline
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
@@ -75,12 +67,9 @@ import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.core.net.toUri
-import androidx.graphics.shapes.Morph
 import com.cemcakmak.hydrotracker.BuildConfig
 import com.cemcakmak.hydrotracker.R
 import com.cemcakmak.hydrotracker.data.models.DarkModePreference
@@ -90,48 +79,9 @@ import com.cemcakmak.hydrotracker.data.update.UpdateRepository
 import com.cemcakmak.hydrotracker.data.update.UpdateStatus
 import com.cemcakmak.hydrotracker.ui.theme.HydroTrackerTheme
 import com.google.android.play.core.appupdate.AppUpdateOptions
-import kotlin.time.Duration.Companion.milliseconds
 
 /**
- * A Shape that morphs between two RoundedPolygons for a given progress (0..1).
- * Recreate this Shape on every recomposition with the new progress to animate.
- */
-class MorphShape(
-    private val morph: Morph,
-    private val percentage: Float
-) : Shape {
-    private var workPath: Path? = null
-    private var lastSize = Size.Unspecified
-
-    override fun createOutline(
-        size: Size,
-        layoutDirection: LayoutDirection,
-        density: Density
-    ): Outline {
-        if (size != lastSize || workPath == null) {
-            lastSize = size
-            workPath = Path()
-        } else {
-            workPath!!.rewind()
-        }
-        val path = workPath!!
-        path.addPath(morph.toPath(progress = percentage))
-        val scaleMatrix = Matrix().apply { scale(x = size.width, y = size.height) }
-        path.transform(scaleMatrix)
-        val bounds = path.getBounds()
-        val centerMatrix = Matrix().apply {
-            translate(
-                size.width / 2f - (bounds.left + bounds.right) / 2f,
-                size.height / 2f - (bounds.top + bounds.bottom) / 2f
-            )
-        }
-        path.transform(centerMatrix)
-        return Outline.Generic(path)
-    }
-}
-
-/**
- * A custom modal dialog shown on the Home screen when a new app update is available.
+ * A custom modal dialoug shown on the Home screen when a new app update is available.
  * Displays version info, install source, and triggers the update flow directly.
  */
 @Composable
@@ -287,70 +237,36 @@ private fun UpdateAvailableDialogContent(
                         )
                     }
 
-                    Icon(
-                        imageVector = ImageVector.vectorResource(R.drawable.arrow_forward_filled),
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(24.dp)
-                    )
-
-                    // New version with morphing shape
-                    val shapes = remember {
-                        listOf(
-                            MaterialShapes.Circle,
-                            MaterialShapes.Pentagon,
-                            MaterialShapes.Sunny,
-                            MaterialShapes.VerySunny,
-                            MaterialShapes.Cookie4Sided,
-                            MaterialShapes.Cookie12Sided,
-                            MaterialShapes.Gem
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(100.dp)
+                    ) {
+                        LoadingIndicator(
+                            modifier = Modifier.matchParentSize(),
+                            color = MaterialTheme.colorScheme.tertiary
+                        )
+                        Icon(
+                            imageVector = ImageVector.vectorResource(R.drawable.arrow_forward_filled),
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onTertiary
                         )
                     }
 
-                    val segmentIndex = remember { Animatable(0f) }
-                    val morphSpec = MaterialTheme.motionScheme.defaultSpatialSpec<Float>()
-
-                    LaunchedEffect(Unit) {
-                        while (true) {
-                            delay(600.milliseconds)
-                            segmentIndex.animateTo(
-                                targetValue = segmentIndex.value + 1f,
-                                animationSpec = morphSpec
-                            )
-                        }
-                    }
-
-                    val currentIndex = (segmentIndex.value.toInt() % shapes.size).coerceIn(shapes.indices)
-                    val nextIndex = ((currentIndex + 1) % shapes.size).coerceIn(shapes.indices)
-                    val morphProgress = segmentIndex.value % 1f
-
-                    val morph = remember(currentIndex, nextIndex) {
-                        Morph(shapes[currentIndex], shapes[nextIndex])
-                    }
-
-                    Surface(
-                        modifier = Modifier
-                            .padding(4.dp)
-                            .size(110.dp),
-                        shape = MorphShape(morph, morphProgress),
-                        color = MaterialTheme.colorScheme.tertiary
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Column(
-                            modifier = Modifier
-                                .padding(horizontal = 12.dp)
-                                .fillMaxSize(),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Text(
-                                text = stringResource(R.string.update_dialog_new_version),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Text(
-                                text = status.versionName,
-                                style = MaterialTheme.typography.titleLargeEmphasized
-                            )
-                        }
+                        Text(
+                            text = stringResource(R.string.update_dialog_new_version),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Text(
+                            text = status.versionName,
+                            style = MaterialTheme.typography.titleLargeEmphasized,
+                            color = MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
 

@@ -31,7 +31,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.SharedTransitionScope
@@ -67,7 +66,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
@@ -75,7 +73,6 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.compose.ui.res.vectorResource
 
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.cemcakmak.hydrotracker.R
 import com.cemcakmak.hydrotracker.data.models.ActivityLevel
@@ -334,6 +331,7 @@ private fun ProfileSettingsCategoryCard(
     SettingsGroupCard(
         index = 0,
         size = 1,
+        isPill = true,
         onClick = {
             haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
             onNavigateTo()
@@ -376,9 +374,7 @@ private fun SettingsCategoryCard(
 ) {
     val shape = getShapeForIndex(
         index = index,
-        size = totalSize,
-        outerRadius = 24.dp,
-        innerRadius = 6.dp
+        size = totalSize
     )
 
     val haptics = LocalHapticFeedback.current
@@ -388,6 +384,7 @@ private fun SettingsCategoryCard(
         tonalElevation = 2.dp,
         modifier = Modifier
             .padding(bottom = 2.dp),
+        border = amoledGroupBorder(),
         onClick = {
             haptics.performHapticFeedback(HapticFeedbackType.Confirm)
             onNavigateTo(category.route)
@@ -428,30 +425,6 @@ private data class SettingsCategory(
     val icon: ImageVector,
     val route: NavigationRoutes
 )
-
-private fun getShapeForIndex(
-    index: Int,
-    size: Int,
-    outerRadius: Dp,
-    innerRadius: Dp
-): Shape {
-    return when {
-        size == 1 -> RoundedCornerShape(outerRadius)
-        index == 0 -> RoundedCornerShape(
-            topStart = outerRadius,
-            topEnd = outerRadius,
-            bottomStart = innerRadius,
-            bottomEnd = innerRadius
-        )
-        index == size - 1 -> RoundedCornerShape(
-            topStart = innerRadius,
-            topEnd = innerRadius,
-            bottomStart = outerRadius,
-            bottomEnd = outerRadius
-        )
-        else -> RoundedCornerShape(innerRadius)
-    }
-}
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
 @Preview(showBackground = true)

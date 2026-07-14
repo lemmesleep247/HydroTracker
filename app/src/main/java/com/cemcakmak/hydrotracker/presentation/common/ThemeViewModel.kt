@@ -91,6 +91,16 @@ class ThemeViewModel(private val userRepository: UserRepository) : ViewModel() {
         }
     }
 
+    fun updateAmoledBordersPreference(showBorders: Boolean) {
+        viewModelScope.launch {
+            val newPreferences = _themePreferences.value.copy(
+                showAmoledBorders = showBorders
+            )
+            _themePreferences.value = newPreferences
+            userRepository.updateThemePreferences(newPreferences)
+        }
+    }
+
     fun setAppFont(font: AppFont) {
         viewModelScope.launch {
             val newPreferences = _themePreferences.value.copy(

@@ -20,9 +20,14 @@
 
 package com.cemcakmak.hydrotracker.presentation.settings
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -84,6 +89,7 @@ fun AppearanceScreen(
     onColorSourceChange: (ColorSource) -> Unit = {},
     onDarkModeChange: (DarkModePreference) -> Unit = {},
     onPureBlackChange: (Boolean) -> Unit = {},
+    onAmoledBordersChange: (Boolean) -> Unit = {},
     onAppFontChange: (AppFont) -> Unit = {},
     onAutoHideNavBarChange: (Boolean) -> Unit = {},
     onNavBarLabelModeChange: (NavBarLabelMode) -> Unit = {},
@@ -111,7 +117,8 @@ fun AppearanceScreen(
             themePreferences = themePreferences,
             isDynamicColorAvailable = isDynamicColorAvailable,
             onColorSourceChange = onColorSourceChange,
-            onPureBlackChange = onPureBlackChange
+            onPureBlackChange = onPureBlackChange,
+            onAmoledBordersChange = onAmoledBordersChange
         )
 
         NavigationBarSection(
@@ -296,17 +303,19 @@ private fun DarkModeSection(
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun ColorSection(
     themePreferences: ThemePreferences,
     isDynamicColorAvailable: Boolean,
     onColorSourceChange: (ColorSource) -> Unit,
-    onPureBlackChange: (Boolean) -> Unit
+    onPureBlackChange: (Boolean) -> Unit,
+    onAmoledBordersChange: (Boolean) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         SettingsSectionHeader(stringResource(R.string.appearance_color_header))
         Column {
-            // Build the rows for this section; add another entry here to grow the list.
+            val showBordersRow = themePreferences.usePureBlack
             val rows = buildList<@Composable () -> Unit> {
                 if (isDynamicColorAvailable) {
                     add {
@@ -323,9 +332,24 @@ private fun ColorSection(
                     )
                 }
             }
+            val totalSize = rows.size + if (showBordersRow) 1 else 0
             rows.forEachIndexed { index, row ->
-                SettingsGroupCard(index = index, size = rows.size) {
+                SettingsGroupCard(index = index, size = totalSize) {
                     row()
+                }
+            }
+            AnimatedVisibility(
+                visible = showBordersRow,
+                enter = fadeIn(animationSpec = MaterialTheme.motionScheme.slowSpatialSpec()) +
+                        expandVertically(animationSpec = MaterialTheme.motionScheme.slowSpatialSpec()),
+                exit = fadeOut(animationSpec = MaterialTheme.motionScheme.slowSpatialSpec()) +
+                        shrinkVertically(animationSpec = MaterialTheme.motionScheme.slowSpatialSpec())
+            ) {
+                SettingsGroupCard(index = totalSize - 1, size = totalSize) {
+                    AmoledBordersRow(
+                        themePreferences = themePreferences,
+                        onAmoledBordersChange = onAmoledBordersChange
+                    )
                 }
             }
         }
@@ -438,6 +462,71 @@ private fun AmoledRow(
                 haptics.performHapticFeedback(HapticFeedbackType.ToggleOn)
             },
             thumbContent = if (themePreferences.usePureBlack) {
+                {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(R.drawable.check_filled),
+                        contentDescription = null,
+                        modifier = Modifier.size(SwitchDefaults.IconSize),
+                    )
+                }
+            } else {
+                null
+            }
+        )
+    }
+}
+
+@Composable
+private fun AmoledBordersRow(
+    themePreferences: ThemePreferences,
+    onAmoledBordersChange: (Boolean) -> Unit
+) {
+    val haptics = LocalHapticFeedback.current
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Crossfade(
+            targetState = themePreferences.showAmoledBorders,
+            animationSpec = tween(400),
+            label = "amoledBordersIcon"
+        ) { showBorders ->
+            Icon(
+                imageVector = if (showBorders) ImageVector.vectorResource(R.drawable.border_outer_fill) else ImageVector.vectorResource(R.drawable.border_outer),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
+        }
+        Column(
+            modifier = Modifier.weight(1f)
+        ) {
+            Text(
+                text = stringResource(R.string.appearance_amoled_borders_title),
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                text = stringResource(R.string.appearance_amoled_borders_desc),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Switch(
+            checked = themePreferences.showAmoledBorders,
+            onCheckedChange = { enabled ->
+                onAmoledBordersChange(enabled)
+
+                val hapticType = if (enabled) {
+                    HapticFeedbackType.ToggleOn
+                } else {
+                    HapticFeedbackType.ToggleOff
+                }
+                haptics.performHapticFeedback(hapticType)
+            },
+            thumbContent = if (themePreferences.showAmoledBorders) {
                 {
                     Icon(
                         imageVector = ImageVector.vectorResource(R.drawable.check_filled),
@@ -929,6 +1018,9 @@ fun AppearanceScreenWithAppBarPreview() {
             },
             onPureBlackChange = { enabled ->
                 previewPreferences = previewPreferences.copy(usePureBlack = enabled)
+            },
+            onAmoledBordersChange = { enabled ->
+                previewPreferences = previewPreferences.copy(showAmoledBorders = enabled)
             },
             onEdgeEffectChange = { style ->
                 previewPreferences = previewPreferences.copy(edgeEffect = style)

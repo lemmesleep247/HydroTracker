@@ -20,6 +20,7 @@ data class ThemePreferences(
     val timeFormat: TimeFormat = TimeFormat.SYSTEM, // 12/24-hour display preference
     val dateFormat: DateFormatPattern = DateFormatPattern.SYSTEM, // Date display pattern preference
     val usePureBlack: Boolean = false, // Pure black backgrounds in dark mode
+    val showAmoledBorders: Boolean = true, // Subtle hairline borders around cards in AMOLED mode
     val appFont: AppFont = AppFont.GOOGLE_SANS_FLEX, // App-wide typeface
     val autoHideNavBar: Boolean = false, // Hide the bottom nav bar when scrolling down
     val navBarLabelMode: NavBarLabelMode = NavBarLabelMode.ALWAYS, // Bottom nav label visibility

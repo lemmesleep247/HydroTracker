@@ -587,6 +587,7 @@ fun HydroTrackerApp(
                                 onColorSourceChange = themeViewModel::setColorSource,
                                 onDarkModeChange = themeViewModel::updateDarkModePreference,
                                 onPureBlackChange = themeViewModel::updatePureBlackPreference,
+                                onAmoledBordersChange = themeViewModel::updateAmoledBordersPreference,
                                 onAppFontChange = themeViewModel::setAppFont,
                                 onAutoHideNavBarChange = themeViewModel::setAutoHideNavBar,
                                 onNavBarLabelModeChange = themeViewModel::setNavBarLabelMode,
