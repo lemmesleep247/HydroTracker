@@ -23,6 +23,8 @@ package com.cemcakmak.hydrotracker.presentation.settings
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -30,22 +32,30 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ButtonGroup
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -56,6 +66,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.unit.dp
@@ -72,7 +83,7 @@ import kotlinx.coroutines.launch
 import androidx.compose.ui.tooling.preview.Preview
 import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -378,18 +389,17 @@ fun DataManagementScreen(
     }
 
     if (showDeleteBeforeDateDialog) {
+        val healthConnectAvailable = remember { HealthConnectManager.isAvailable(context) }
         DeleteBeforeDateDialog(
             onDismiss = { showDeleteBeforeDateDialog = false },
-            onConfirm = { date, deleteLocal, deleteHealthConnect ->
+            countEntriesBefore = { date -> waterIntakeRepository.countEntriesBefore(date) },
+            healthConnectAvailable = healthConnectAvailable,
+            onConfirm = { date, includeHealthConnect ->
                 showDeleteBeforeDateDialog = false
                 scope.launch {
                     isBusy = true
-                    val localResult = if (deleteLocal) {
-                        waterIntakeRepository.deleteEntriesBefore(date)
-                    } else {
-                        Result.success(0)
-                    }
-                    val hcResult = if (deleteHealthConnect && HealthConnectManager.isAvailable(context)) {
+                    val localResult = waterIntakeRepository.deleteEntriesBefore(date)
+                    val hcResult = if (includeHealthConnect && HealthConnectManager.isAvailable(context)) {
                         waterIntakeRepository.deleteHealthConnectEntriesBefore(context, date)
                     } else {
                         Result.success(0)
@@ -513,17 +523,56 @@ fun DataManagementScreen(
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun DeleteBeforeDateDialog(
     onDismiss: () -> Unit,
-    onConfirm: (date: LocalDate, deleteLocal: Boolean, deleteHealthConnect: Boolean) -> Unit
+    onConfirm: (date: LocalDate, includeHealthConnect: Boolean) -> Unit,
+    countEntriesBefore: suspend (LocalDate) -> Int,
+    healthConnectAvailable: Boolean
+) {
+    var chosenDate by remember { mutableStateOf<LocalDate?>(null) }
+    var chosenCount by remember { mutableIntStateOf(0) }
+
+    val date = chosenDate
+    if (date == null) {
+        DeleteBeforeDatePickerStep(
+            onDismiss = onDismiss,
+            onContinue = { picked, count ->
+                chosenDate = picked
+                chosenCount = count
+            },
+            countEntriesBefore = countEntriesBefore
+        )
+    } else {
+        DeleteBeforeDateConfirmStep(
+            date = date,
+            affectedCount = chosenCount,
+            healthConnectAvailable = healthConnectAvailable,
+            onDismiss = onDismiss,
+            onConfirm = { includeHealthConnect -> onConfirm(date, includeHealthConnect) }
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun DeleteBeforeDatePickerStep(
+    onDismiss: () -> Unit,
+    onContinue: (date: LocalDate, affectedCount: Int) -> Unit,
+    countEntriesBefore: suspend (LocalDate) -> Int
 ) {
     val haptics = LocalHapticFeedback.current
-    var deleteLocal by remember { mutableStateOf(true) }
-    var deleteHealthConnect by remember { mutableStateOf(true) }
+
+    val defaultDateMillis = remember {
+        LocalDate.now()
+            .minusDays(30)
+            .atStartOfDay(ZoneOffset.UTC)
+            .toInstant()
+            .toEpochMilli()
+    }
 
     val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = defaultDateMillis,
         selectableDates = object : SelectableDates {
             override fun isSelectableDate(utcTimeMillis: Long): Boolean {
                 return utcTimeMillis <= System.currentTimeMillis()
@@ -531,18 +580,36 @@ private fun DeleteBeforeDateDialog(
         }
     )
 
+    // Live count of local entries affected by the selected cutoff date.
+    var affectedCount by remember { mutableStateOf<Int?>(null) }
+    LaunchedEffect(datePickerState.selectedDateMillis) {
+        val millis = datePickerState.selectedDateMillis
+        affectedCount = if (millis != null) {
+            try {
+                countEntriesBefore(
+                    Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
+                )
+            } catch (_: Exception) {
+                null
+            }
+        } else {
+            null
+        }
+    }
+
     DatePickerDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
             TextButton(
+                enabled = datePickerState.selectedDateMillis != null,
                 onClick = {
                     val millis = datePickerState.selectedDateMillis ?: return@TextButton
-                    val date = Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate()
+                    val date = Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate()
                     haptics.performHapticFeedback(HapticFeedbackType.Confirm)
-                    onConfirm(date, deleteLocal, deleteHealthConnect)
+                    onContinue(date, affectedCount ?: 0)
                 }
             ) {
-                Text(stringResource(R.string.action_confirm))
+                Text(stringResource(R.string.action_continue))
             }
         },
         dismissButton = {
@@ -551,37 +618,89 @@ private fun DeleteBeforeDateDialog(
             }
         }
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = stringResource(R.string.data_delete_before_date_title),
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            Text(
-                text = stringResource(R.string.data_delete_before_date_inclusive_hint),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-            DatePicker(state = datePickerState)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(stringResource(R.string.data_delete_local_toggle))
-                Switch(checked = deleteLocal, onCheckedChange = { deleteLocal = it })
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Text(stringResource(R.string.data_delete_health_connect_toggle))
-                Switch(checked = deleteHealthConnect, onCheckedChange = { deleteHealthConnect = it })
-            }
-        }
+        DatePicker(
+            state = datePickerState,
+            showModeToggle = false
+        )
     }
+}
+
+
+@Composable
+private fun DeleteBeforeDateConfirmStep(
+    date: LocalDate,
+    affectedCount: Int,
+    healthConnectAvailable: Boolean,
+    onDismiss: () -> Unit,
+    onConfirm: (includeHealthConnect: Boolean) -> Unit
+) {
+    val haptics = LocalHapticFeedback.current
+    var includeHealthConnect by remember { mutableStateOf(healthConnectAvailable) }
+    val dateFormatter = remember { DateTimeFormatter.ofPattern("d MMMM yyyy") }
+
+
+    ConfirmDeleteDialog(
+        title = stringResource(
+            R.string.data_delete_before_date_model_title,
+            date.format(dateFormatter)
+        ),
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                Text(
+                    text = if (affectedCount == 0) {
+                        stringResource(R.string.data_delete_no_entries_affected)
+                    } else {
+                        pluralStringResource(
+                            R.plurals.data_delete_entries_affected,
+                            affectedCount,
+                            affectedCount, date.format(dateFormatter)
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                if (healthConnectAvailable) {
+                    HorizontalDivider(modifier = Modifier.fillMaxWidth())
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = stringResource(R.string.data_delete_health_connect_include),
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Switch(
+                            checked = includeHealthConnect,
+                            onCheckedChange = {
+                                haptics.performHapticFeedback(HapticFeedbackType.ToggleOn)
+                                includeHealthConnect = it
+                            },
+                            thumbContent = if (includeHealthConnect) {
+                                {
+                                    Icon(
+                                        imageVector = ImageVector.vectorResource(R.drawable.check_filled),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(SwitchDefaults.IconSize),
+                                    )
+                                }
+                            } else {
+                                null
+                            }
+                        )
+                    }
+                }
+            }
+        },
+        confirmEnabled = affectedCount > 0 || includeHealthConnect,
+        onDismiss = onDismiss,
+        onConfirm = { onConfirm(includeHealthConnect) }
+    )
 }
 
 @Composable
@@ -591,28 +710,116 @@ private fun ConfirmDeleteDialog(
     onDismiss: () -> Unit,
     onConfirm: () -> Unit
 ) {
-    val haptics = LocalHapticFeedback.current
+    ConfirmDeleteDialog(
+        title = title,
+        text = { Text(message) },
+        confirmEnabled = true,
+        onDismiss = onDismiss,
+        onConfirm = onConfirm
+    )
+}
+
+@Composable
+private fun ConfirmDeleteDialog(
+    title: String,
+    text: @Composable () -> Unit,
+    confirmEnabled: Boolean,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit
+) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text(title) },
-        text = { Text(message) },
-        confirmButton = {
-            Button(
-                onClick = {
-                    haptics.performHapticFeedback(HapticFeedbackType.Confirm)
-                    onConfirm()
-                },
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.error,
-                    contentColor = MaterialTheme.colorScheme.onError
-                )
-            ) {
-                Text(stringResource(R.string.action_delete))
-            }
+        icon = {
+            Icon(
+                imageVector = Icons.Default.Delete,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.error
+            )
         },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text(stringResource(R.string.action_cancel))
+        title = { Text(title) },
+        text = text,
+        confirmButton = {
+            val haptics = LocalHapticFeedback.current
+            val cancelInteractionSource = remember { MutableInteractionSource() }
+            val confirmDeleteInteractionSource = remember { MutableInteractionSource() }
+
+            LaunchedEffect(cancelInteractionSource) {
+                cancelInteractionSource.interactions.collect { interaction ->
+                    when (interaction) {
+                        is PressInteraction.Press -> haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+                        is PressInteraction.Release -> haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                        else -> {  }
+                    }
+                }
+            }
+
+            LaunchedEffect(confirmDeleteInteractionSource) {
+                confirmDeleteInteractionSource.interactions.collect { interaction ->
+                    when (interaction) {
+                        is PressInteraction.Press -> haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+                        is PressInteraction.Release -> haptics.performHapticFeedback(HapticFeedbackType.Confirm)
+                        else -> {  }
+                    }
+                }
+            }
+
+            ButtonGroup(
+                modifier = Modifier.fillMaxWidth(),
+                overflowIndicator = {}
+            ) {
+                val scope = this
+                customItem(
+                    buttonGroupContent = {
+                        FilledTonalButton(
+                            onClick = {
+                                onDismiss()
+                            },
+                            shapes = ButtonDefaults.shapes(),
+                            interactionSource = cancelInteractionSource,
+                            modifier = with(scope) {
+                                Modifier
+                                    .weight(1f)
+                                    .height(46.dp)
+                                    .animateWidth(interactionSource = cancelInteractionSource)
+                            }
+                        ) {
+                            Text(
+                                text = stringResource(R.string.action_cancel)
+                            )
+                        }
+                    },
+                    menuContent = {}
+                )
+
+                customItem(
+                    buttonGroupContent = {
+                        Button(
+                            onClick = {
+                                onConfirm()
+                            },
+                            enabled = confirmEnabled,
+                            colors = ButtonDefaults.filledTonalButtonColors(
+                                containerColor = MaterialTheme.colorScheme.error,
+                                contentColor = MaterialTheme.colorScheme.onError
+                            ),
+                            shapes = ButtonDefaults.shapes(),
+                            interactionSource = confirmDeleteInteractionSource,
+                            modifier = with(scope) {
+                                Modifier
+                                    .weight(1f)
+                                    .height(46.dp)
+                                    .animateWidth(interactionSource = confirmDeleteInteractionSource)
+                            }
+                        ) {
+                            Text(
+                                text = stringResource(R.string.action_delete),
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                        }
+                    },
+                    menuContent = {}
+                )
             }
         }
     )

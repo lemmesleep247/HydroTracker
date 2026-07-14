@@ -61,6 +61,10 @@ interface WaterIntakeDao {
     @Query("DELETE FROM water_intake_entries WHERE timestamp <= :timestampMillis")
     suspend fun deleteEntriesBefore(timestampMillis: Long)
 
+    /** Count entries matching the [deleteEntriesBefore] predicate (inclusive cutoff). */
+    @Query("SELECT COUNT(*) FROM water_intake_entries WHERE timestamp <= :timestampMillis")
+    suspend fun countEntriesBefore(timestampMillis: Long): Int
+
     @Query("UPDATE water_intake_entries SET is_hidden = 1 WHERE id = :entryId")
     suspend fun hideEntry(entryId: Long)
 

@@ -1227,6 +1227,7 @@ private class PreviewWaterIntakeDao : WaterIntakeDao {
         previewEntries
     override suspend fun getAllEntriesForExportSync(): List<WaterIntakeEntry> = previewEntries
     override suspend fun deleteEntriesBefore(timestampMillis: Long) {}
+    override suspend fun countEntriesBefore(timestampMillis: Long): Int = previewEntries.size
     override fun getTotalIntakeForDate(date: String): Flow<Double> = flowOf(1350.0)
     override suspend fun getEntryCountForDate(date: String): Int = previewEntries.size
     override suspend fun getEntryCount(): Int = previewEntries.size

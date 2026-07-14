@@ -20,6 +20,7 @@
     <string name="action_confirm">Confirm</string>
     <string name="action_reset">Reset</string>
     <string name="action_next">Next</string>
+    <string name="action_continue">Continue</string>
 
     <!-- ============================================================================
          Accessibility content descriptions
@@ -564,9 +565,16 @@
     <string name="data_export_scope_desc">Exports only HydroTracker entries. Entries imported from other health apps are excluded.</string>
     <string name="data_delete_before_date_title">Delete entries before date</string>
     <string name="data_delete_before_date_desc">Remove intake entries on or before a chosen date</string>
-    <string name="data_delete_before_date_inclusive_hint">Selected date is included in the deletion.</string>
-    <string name="data_delete_local_toggle">Delete local entries</string>
-    <string name="data_delete_health_connect_toggle">Delete from Health Connect</string>
+    <!-- %1$s = formatted cutoff date -->
+    <string name="data_delete_before_date_model_title">Delete entries</string>
+    <string name="data_delete_before_date_message">Entries recorded on or before %1$s will be permanently deleted.</string>
+    <string name="data_delete_health_connect_include">Include Health Connect</string>
+    <string name="data_delete_no_entries_affected">No entries on or before this date</string>
+    <!-- Number of entries that will be deleted for the selected cutoff date -->
+    <plurals name="data_delete_entries_affected">
+        <item quantity="one">%1$d entry recorded on or before %2$s will be permanently deleted.</item>
+        <item quantity="other">%1$d entries recorded on or before %2$s will be permanently deleted.</item>
+    </plurals>
     <string name="data_delete_local_title">Delete local data only</string>
     <string name="data_delete_local_desc">Remove all app data stored on this device</string>
     <string name="data_delete_local_message">This will delete all water intake entries, daily summaries, container presets, custom beverages, and your profile. This action cannot be undone.</string>

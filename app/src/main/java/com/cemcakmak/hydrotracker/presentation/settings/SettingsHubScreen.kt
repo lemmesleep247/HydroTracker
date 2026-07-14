@@ -44,12 +44,13 @@ import androidx.navigation3.ui.LocalNavAnimatedContentScope
 import androidx.compose.animation.core.animateDp
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.scale
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ListItem
-import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -200,7 +201,7 @@ fun SettingsHubScreen(
                         SettingsCategory(
                             title = stringResource(R.string.screen_appearance_title),
                             description = stringResource(R.string.settings_appearance_desc),
-                            icon = { Icon(ImageVector.vectorResource(R.drawable.palette_filled), contentDescription = null) },
+                            icon = ImageVector.vectorResource(R.drawable.palette_filled),
                             route = NavigationRoutes.SettingsAppearance
                         )
                     )
@@ -208,7 +209,7 @@ fun SettingsHubScreen(
                         SettingsCategory(
                             title = stringResource(R.string.screen_display_locale_title),
                             description = stringResource(R.string.settings_display_desc),
-                            icon = { Icon(ImageVector.vectorResource(R.drawable.event_filled), contentDescription = null) },
+                            icon = ImageVector.vectorResource(R.drawable.event_filled),
                             route = NavigationRoutes.SettingsDisplay
                         )
                     )
@@ -216,7 +217,7 @@ fun SettingsHubScreen(
                         SettingsCategory(
                             title = stringResource(R.string.screen_hydration_title),
                             description = stringResource(R.string.settings_hydration_desc),
-                            icon = { Icon(ImageVector.vectorResource(R.drawable.water_filled), contentDescription = null) },
+                            icon = ImageVector.vectorResource(R.drawable.water_filled),
                             route = NavigationRoutes.SettingsHydration
                         )
                     )
@@ -224,7 +225,7 @@ fun SettingsHubScreen(
                         SettingsCategory(
                             title = stringResource(R.string.screen_quickadd_title),
                             description = stringResource(R.string.settings_quickadd_desc),
-                            icon = { Icon(ImageVector.vectorResource(R.drawable.checklist_filled), contentDescription = null) },
+                            icon = ImageVector.vectorResource(R.drawable.checklist_filled),
                             route = NavigationRoutes.SettingsContainers
                         )
                     )
@@ -232,7 +233,7 @@ fun SettingsHubScreen(
                         SettingsCategory(
                             title = stringResource(R.string.screen_notifications_title),
                             description = stringResource(R.string.settings_notifications_desc),
-                            icon = { Icon(ImageVector.vectorResource(R.drawable.notifications_filled), contentDescription = null) },
+                            icon = ImageVector.vectorResource(R.drawable.notifications_filled),
                             route = NavigationRoutes.SettingsNotifications
                         )
                     )
@@ -240,8 +241,16 @@ fun SettingsHubScreen(
                         SettingsCategory(
                             title = stringResource(R.string.screen_data_management_title),
                             description = stringResource(R.string.settings_data_management_desc),
-                            icon = { Icon(ImageVector.vectorResource(R.drawable.save_fill), contentDescription = null) },
+                            icon = ImageVector.vectorResource(R.drawable.save_fill),
                             route = NavigationRoutes.SettingsDataManagement
+                        )
+                    )
+                    add(
+                        SettingsCategory(
+                            title = stringResource(R.string.screen_support_title),
+                            description = stringResource(R.string.settings_support_desc),
+                            icon = ImageVector.vectorResource(R.drawable.heart_smile_filled),
+                            route = NavigationRoutes.SettingsSupport
                         )
                     )
                     val isUpdateAvailable = updateStatus is UpdateStatus.Available
@@ -250,7 +259,7 @@ fun SettingsHubScreen(
                             title = if (isUpdateAvailable) stringResource(R.string.settings_about_update_available) else stringResource(R.string.screen_about_title),
                             titleColor = if (isUpdateAvailable) MaterialTheme.colorScheme.tertiary else null,
                             description = stringResource(R.string.settings_about_desc),
-                            icon = { Icon(ImageVector.vectorResource(R.drawable.info_filled), contentDescription = null) },
+                            icon = ImageVector.vectorResource(R.drawable.info_filled),
                             route = NavigationRoutes.SettingsAbout
                         )
                     )
@@ -259,7 +268,7 @@ fun SettingsHubScreen(
                             SettingsCategory(
                                 title = stringResource(R.string.screen_developer_title),
                                 description = stringResource(R.string.settings_developer_desc),
-                                icon = { Icon(ImageVector.vectorResource(R.drawable.code_blocks_filled), contentDescription = null) },
+                                icon = ImageVector.vectorResource(R.drawable.code_blocks_filled),
                                 route = NavigationRoutes.SettingsDeveloper
                             )
                         )
@@ -330,17 +339,30 @@ private fun ProfileSettingsCategoryCard(
             onNavigateTo()
         }
     ) {
-        ListItem(
-            supportingContent = { Text(text = userProfile.name, modifier = nameModifier) },
-            leadingContent = {
-                    ProfileAvatar(
-                    profileImagePath = userProfile.profileImagePath,
-                    name = userProfile.name,
-                    size = 44.dp
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            ProfileAvatar(
+                profileImagePath = userProfile.profileImagePath,
+                name = userProfile.name,
+                size = 44.dp
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.nav_profile),
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Text(
+                    text = userProfile.name,
+                    modifier = nameModifier,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-        ) {
-            Text(text = stringResource(R.string.nav_profile))
         }
     }
 }
@@ -371,15 +393,30 @@ private fun SettingsCategoryCard(
             onNavigateTo(category.route)
         }
     ) {
-        ListItem(
-            supportingContent = { Text(category.description) },
-            leadingContent = category.icon,
-            colors = ListItemDefaults.colors(
-                leadingContentColor = MaterialTheme.colorScheme.primary,
-                contentColor = category.titleColor ?: ListItemDefaults.colors().contentColor
-            )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(category.title)
+            Icon(
+                imageVector = category.icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = category.title,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                Text(
+                    text = category.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
@@ -388,7 +425,7 @@ private data class SettingsCategory(
     val title: String,
     val titleColor: Color? = null,
     val description: String,
-    val icon: @Composable () -> Unit,
+    val icon: ImageVector,
     val route: NavigationRoutes
 )
 

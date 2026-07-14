@@ -493,6 +493,18 @@ class WaterIntakeRepository(
     }
 
     /**
+     * Count local water intake entries recorded on or before the supplied calendar date.
+     * Uses the same inclusive end-of-day cutoff as [deleteEntriesBefore].
+     */
+    suspend fun countEntriesBefore(date: LocalDate): Int = withContext(Dispatchers.IO) {
+        val endOfDay = date.atTime(LocalTime.MAX)
+            .atZone(ZoneId.systemDefault())
+            .toInstant()
+            .toEpochMilli()
+        waterIntakeDao.countEntriesBefore(endOfDay)
+    }
+
+    /**
      * Delete HydroTracker records from Health Connect that fall on or before the given calendar date.
      * Returns the number of records deleted.
      */
