@@ -24,6 +24,8 @@ Added
 - Haptic feedback toggle
 - Optional subtle borders around cards in AMOLED mode
 - Font warning for Xiaomi group devices (HyperOS/MIUI) where custom fonts don't work as intended
+- Beverage Colours toggle under Appearance ▸ Home screen (default off)
+- When enabled, the home carousel, daily entry list, beverage selectors and custom entry dialogue take on each beverage's colour
 #### Display & Locale
 - Multi-language and localization support
 - Multiple date format options:
@@ -75,6 +77,15 @@ Added
 ### Miscellaneous
 - Custom haptic feedback engine with multi-tier OEM-aware fallback
 - Backdrop blur visual effects module
+### Widget
+- Complete rebuild of the home-screen widget using Jetpack Glance
+- Large widget now shows a progress ring and up to three quick-add cards
+- Material You dynamic colours on Android 12+ with a fallback HydroTracker water-themed palette
+- Widget refreshes automatically whenever you add, edit or delete an entry
+- New Widget settings under Appearance for choosing dynamic colours, transparent background, and pure black or white surfaces
+- Customizable quick-add buttons: pin your own container and beverage combos or let the widget pick your most-used ones
+- Quick-add cards automatically suggest your most common beverage and container combinations
+- Generated picker previews on Android 15; static preview fallback on older devices
 ### Home
 - FAB menu with three options:
   1. Add a custom entry
@@ -110,9 +121,12 @@ Changed
 - Redesigned the update available screen
 - Updated edit and delete entry dialogues
 - Updated libraries
+- Replaced the Compact and Progress widgets with the redesigned Large widget
 
 Fixed
 - Fixed FAB visibility and animation glitches
+- Fixed "Sleep time" day end so the day ends at your sleep time instead of your wake-up time; existing entries and summaries are corrected automatically
+- Fixed widget quick-add actions not updating the widget straight away
 
 [1.0.6.1]
 • Small preparations for F-Droid release
