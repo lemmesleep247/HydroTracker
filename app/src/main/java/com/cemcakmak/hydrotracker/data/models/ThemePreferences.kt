@@ -21,6 +21,7 @@ data class ThemePreferences(
     val dateFormat: DateFormatPattern = DateFormatPattern.SYSTEM, // Date display pattern preference
     val usePureBlack: Boolean = false, // Pure black backgrounds in dark mode
     val showAmoledBorders: Boolean = true, // Subtle hairline borders around cards in AMOLED mode
+    val useBeverageColors: Boolean = false, // Tint beverage-related surfaces with dedicated beverage colours
     val appFont: AppFont = AppFont.GOOGLE_SANS_FLEX, // App-wide typeface
     val autoHideNavBar: Boolean = false, // Hide the bottom nav bar when scrolling down
     val navBarLabelMode: NavBarLabelMode = NavBarLabelMode.ALWAYS, // Bottom nav label visibility

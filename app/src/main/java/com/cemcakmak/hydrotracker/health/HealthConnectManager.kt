@@ -386,7 +386,7 @@ object HealthConnectManager {
         record: HydrationRecord,
         sourceName: String?,
         source: com.cemcakmak.hydrotracker.data.models.EntrySource,
-        wakeUpTime: String = "07:00",
+        dayEndTime: String = "23:00",
         dayEndMode: com.cemcakmak.hydrotracker.data.models.DayEndMode = com.cemcakmak.hydrotracker.data.models.DayEndMode.SLEEP_TIME,
         healthConnectRecordId: String? = null
     ): WaterIntakeEntry {
@@ -394,7 +394,7 @@ object HealthConnectManager {
         val timestamp = record.startTime.toEpochMilli()
         val date = com.cemcakmak.hydrotracker.utils.UserDayCalculator.getUserDayStringForTimestamp(
             timestamp,
-            wakeUpTime,
+            dayEndTime,
             dayEndMode
         )
 

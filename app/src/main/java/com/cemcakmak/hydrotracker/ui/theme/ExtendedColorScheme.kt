@@ -20,10 +20,13 @@
 
 package com.cemcakmak.hydrotracker.ui.theme
 
+import androidx.compose.material3.ColorScheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import com.cemcakmak.hydrotracker.data.models.BeverageType
 
 data class ExtendedColorScheme(
     val success: Color,
@@ -126,3 +129,126 @@ val LocalExtendedColorScheme = staticCompositionLocalOf {
 val MaterialTheme.extendedColorScheme: ExtendedColorScheme
     @Composable
     get() = LocalExtendedColorScheme.current
+
+/**
+ * The four colour roles for a single beverage: main accent, content on that accent,
+ * container surface, and content on the container.
+ */
+data class BeverageColorRoles(
+    val color: Color,
+    val onColor: Color,
+    val containerColor: Color,
+    val onContainerColor: Color
+)
+
+/**
+ * Returns the colour roles for a beverage key.
+ *
+ * - When [useBeverageColors] is true, preset beverages map to their [ExtendedColorScheme] family.
+ * - Water uses the [ColorScheme.primary] family unless [useBeverageColorsForWater] is true.
+ * - When [useBeverageColors] is false, non-water beverages use the [ColorScheme.tertiary] family,
+ *   matching the legacy look.
+ * - Custom or unknown beverages fall back to the [ColorScheme.tertiary] family.
+ */
+fun ExtendedColorScheme.beverageColorRoles(
+    beverageKey: String,
+    colorScheme: ColorScheme,
+    useBeverageColors: Boolean = true,
+    useBeverageColorsForWater: Boolean = false
+): BeverageColorRoles {
+    val beverage = BeverageType.fromStringOrDefault(beverageKey)
+
+    if (!useBeverageColors && beverage != BeverageType.WATER) {
+        return BeverageColorRoles(
+            color = colorScheme.tertiary,
+            onColor = colorScheme.onTertiary,
+            containerColor = colorScheme.tertiaryContainer,
+            onContainerColor = colorScheme.onTertiaryContainer
+        )
+    }
+
+    return when {
+        beverage == BeverageType.WATER && !useBeverageColorsForWater -> BeverageColorRoles(
+            color = colorScheme.primary,
+            onColor = colorScheme.onPrimary,
+            containerColor = colorScheme.primaryContainer,
+            onContainerColor = colorScheme.onPrimaryContainer
+        )
+        beverage == BeverageType.WATER -> BeverageColorRoles(
+            color = water,
+            onColor = onWater,
+            containerColor = waterContainer,
+            onContainerColor = onWaterContainer
+        )
+        beverage == BeverageType.COFFEE -> BeverageColorRoles(
+            color = coffee,
+            onColor = onCoffee,
+            containerColor = coffeeContainer,
+            onContainerColor = onCoffeeContainer
+        )
+        beverage == BeverageType.TEA -> BeverageColorRoles(
+            color = tea,
+            onColor = onTea,
+            containerColor = teaContainer,
+            onContainerColor = onTeaContainer
+        )
+        beverage == BeverageType.SOFT_DRINK -> BeverageColorRoles(
+            color = softDrink,
+            onColor = onSoftDrink,
+            containerColor = softDrinkContainer,
+            onContainerColor = onSoftDrinkContainer
+        )
+        beverage == BeverageType.ENERGY_DRINK -> BeverageColorRoles(
+            color = energyDrink,
+            onColor = onEnergyDrink,
+            containerColor = energyDrinkContainer,
+            onContainerColor = onEnergyDrinkContainer
+        )
+        beverage == BeverageType.SPORTS_DRINK -> BeverageColorRoles(
+            color = sportsDrink,
+            onColor = onSportsDrink,
+            containerColor = sportsDrinkContainer,
+            onContainerColor = onSportsDrinkContainer
+        )
+        beverage == BeverageType.ORAL_REHYDRATION_SOLUTION -> BeverageColorRoles(
+            color = oralRehydrationSolution,
+            onColor = onOralRehydrationSolution,
+            containerColor = oralRehydrationSolutionContainer,
+            onContainerColor = onOralRehydrationSolutionContainer
+        )
+        beverage == BeverageType.MILK -> BeverageColorRoles(
+            color = milk,
+            onColor = onMilk,
+            containerColor = milkContainer,
+            onContainerColor = onMilkContainer
+        )
+        beverage == BeverageType.FRUIT_JUICE -> BeverageColorRoles(
+            color = fruitJuice,
+            onColor = onFruitJuice,
+            containerColor = fruitJuiceContainer,
+            onContainerColor = onFruitJuiceContainer
+        )
+        else -> BeverageColorRoles(
+            color = colorScheme.tertiary,
+            onColor = colorScheme.onTertiary,
+            containerColor = colorScheme.tertiaryContainer,
+            onContainerColor = colorScheme.onTertiaryContainer
+        )
+    }
+}
+
+/**
+ * Remembered variant of [beverageColorRoles] for use inside Composables.
+ */
+@Composable
+fun rememberBeverageColorRoles(
+    beverageKey: String,
+    useBeverageColors: Boolean = true,
+    useBeverageColorsForWater: Boolean = false
+): BeverageColorRoles {
+    val colorScheme = MaterialTheme.colorScheme
+    val extended = MaterialTheme.extendedColorScheme
+    return remember(beverageKey, colorScheme, extended, useBeverageColors, useBeverageColorsForWater) {
+        extended.beverageColorRoles(beverageKey, colorScheme, useBeverageColors, useBeverageColorsForWater)
+    }
+}

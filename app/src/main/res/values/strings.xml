@@ -296,6 +296,8 @@
     <string name="appearance_haptics_title">Haptic Feedback</string>
     <string name="appearance_haptics_desc">Vibrate on button taps and actions</string>
     <string name="appearance_edge_effect_title">Edge Effect</string>
+    <string name="appearance_beverage_colors_title">Beverage Colours</string>
+    <string name="appearance_beverage_colors_desc">Tint home-screen cards and entries with each beverage’s colour</string>
     <!-- Sample data shown in the theme preview card -->
     <string name="appearance_preview_amount">1,250 / 2,500 ml</string>
     <string name="appearance_preview_entries">Entries</string>

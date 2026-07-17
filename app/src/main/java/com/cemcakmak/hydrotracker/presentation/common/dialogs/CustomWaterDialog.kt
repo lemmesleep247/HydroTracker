@@ -64,6 +64,7 @@ import com.cemcakmak.hydrotracker.data.models.BeverageType
 import com.cemcakmak.hydrotracker.data.models.VolumeUnit
 import com.cemcakmak.hydrotracker.presentation.common.BeverageOption
 import com.cemcakmak.hydrotracker.presentation.common.toOption
+import com.cemcakmak.hydrotracker.ui.theme.rememberBeverageColorRoles
 import com.cemcakmak.hydrotracker.utils.VolumeUnitConverter
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -74,7 +75,8 @@ fun CustomWaterDialog(
     selectedBeverage: BeverageOption,
     onBeverageChange: (BeverageOption) -> Unit,
     volumeUnit: VolumeUnit,
-    beverages: List<BeverageOption> = BeverageType.getAllSorted().map { it.toOption() }
+    beverages: List<BeverageOption> = BeverageType.getAllSorted().map { it.toOption() },
+    useBeverageColors: Boolean = false,
 ) {
     var amountText by remember { mutableStateOf("") }
     var isError by remember { mutableStateOf(false) }
@@ -175,9 +177,15 @@ fun CustomWaterDialog(
 
                 // Show selected beverage info
                 if (!selectedBeverage.isWater) {
+                    val beverageColors = rememberBeverageColorRoles(
+                        beverageKey = selectedBeverage.storageKey,
+                        useBeverageColors = useBeverageColors
+                    )
+
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
-                        color = MaterialTheme.colorScheme.tertiaryContainer,
+                        color = beverageColors.containerColor,
+                        contentColor = beverageColors.onContainerColor,
                         shape = MaterialTheme.shapes.extraLargeIncreased
                     ) {
                         Column(
@@ -195,8 +203,7 @@ fun CustomWaterDialog(
                                 }
                                 Text(
                                     text = resolvedDescription,
-                                    style = MaterialTheme.typography.titleSmall,
-                                    color = MaterialTheme.colorScheme.onTertiaryContainer
+                                    style = MaterialTheme.typography.titleSmall
                                 )
                             }
                             Text(
@@ -205,7 +212,7 @@ fun CustomWaterDialog(
                                     (selectedBeverage.hydrationMultiplier * 100).toInt()
                                 ),
                                 style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.tertiary
+                                color = beverageColors.color
                             )
                         }
                     }

@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CornerSize
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -39,6 +41,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -62,7 +65,9 @@ import com.cemcakmak.hydrotracker.data.models.ThemePreferences
 import com.cemcakmak.hydrotracker.data.models.UserProfile
 import com.cemcakmak.hydrotracker.presentation.common.dialogs.DailyEntryDeleteDialog
 import com.cemcakmak.hydrotracker.presentation.common.shapes.PillShape
+import com.cemcakmak.hydrotracker.presentation.common.shapes.SquircleShape
 import com.cemcakmak.hydrotracker.ui.theme.HydroTrackerTheme
+import com.cemcakmak.hydrotracker.ui.theme.rememberBeverageColorRoles
 import com.cemcakmak.hydrotracker.utils.ContainerIconMapper
 import kotlin.time.Duration.Companion.milliseconds
 
@@ -243,7 +248,7 @@ internal fun DailyGroupCard(
     tonalElevation: Dp = 2.dp,
     content: @Composable () -> Unit
 ) {
-    val shape = rememberAnimatedGroupShape(index, size)
+    val shape = getShapeForIndex(index, size)
 
     Surface(
         shape = shape,
@@ -281,6 +286,10 @@ fun DailyEntryItem(
     } else {
         entry.beverageType
     }
+    val beverageColors = rememberBeverageColorRoles(
+        beverageKey = entry.beverageType,
+        useBeverageColors = themePreferences.useBeverageColors
+    )
 
     Surface(
         modifier = Modifier
@@ -294,7 +303,7 @@ fun DailyEntryItem(
             Surface(
                 modifier = Modifier.size(height = 56.dp, width = 34.dp),
                 shape = PillShape,
-                color = if (entry.beverageType != BeverageType.WATER.name) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.primary
+                color = beverageColors.color
             ) {
                 Box(
                     modifier = Modifier.fillMaxSize(),
@@ -302,7 +311,8 @@ fun DailyEntryItem(
                 ) {
                     Icon(
                         painter = painterResource(containerIcon.checkedRes),
-                        contentDescription = containerLabel
+                        contentDescription = containerLabel,
+                        tint = beverageColors.onColor
                     )
                 }
             }
@@ -315,26 +325,21 @@ fun DailyEntryItem(
                 horizontalAlignment = Alignment.Start,
             ) {
                 // Title
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (entry.beverageType != BeverageType.WATER.name) {
-                        Text(
-                            text = stringResource(
-                                R.string.home_beverage_effective_name,
-                                beverageLabel
-                            ),
-                            maxLines = 1,
-                            style = MaterialTheme.typography.titleMediumEmphasized,
-                            color = MaterialTheme.colorScheme.tertiary
-                        )
-                    }
+                Text(
+                    text = containerLabel,
+                    maxLines = 1,
+                    style = MaterialTheme.typography.titleMediumEmphasized
+                )
 
+                if (entry.beverageType != BeverageType.WATER.name) {
                     Text(
-                        text = containerLabel,
+                        text = stringResource(
+                            R.string.home_beverage_effective_name,
+                            beverageLabel
+                        ),
                         maxLines = 1,
-                        style = MaterialTheme.typography.titleMediumEmphasized
+                        style = MaterialTheme.typography.titleMediumEmphasized,
+                        color = beverageColors.color
                     )
                 }
 
@@ -368,7 +373,7 @@ fun DailyEntryItem(
                 if (entry.beverageType != BeverageType.WATER.name) {
                     Surface(
                         shape = MaterialTheme.shapes.extraExtraLarge,
-                        color = MaterialTheme.colorScheme.tertiary
+                        color = beverageColors.color
                     ) {
                         Text(
                             modifier = Modifier
@@ -378,12 +383,42 @@ fun DailyEntryItem(
                                 R.string.home_beverage_effective_amount,
                                 entry.getFormattedEffectiveAmount(context, userProfile.volumeUnit)
                             ),
-                            style = MaterialTheme.typography.titleMediumEmphasized
+                            style = MaterialTheme.typography.titleMediumEmphasized,
+                            color = beverageColors.onColor
                         )
                     }
                 }
             }
         }
+    }
+}
+
+private fun getShapeForIndex(
+    index: Int,
+    size: Int,
+    outerRadius: Dp = 30.dp,
+    innerRadius: Dp = 6.dp
+): Shape {
+    return when {
+        size == 1 -> SquircleShape(
+            topStart = CornerSize(outerRadius),
+            topEnd = CornerSize(outerRadius),
+            bottomStart = CornerSize(outerRadius),
+            bottomEnd = CornerSize(outerRadius)
+        )
+        index == 0 -> SquircleShape(
+            topStart = CornerSize(outerRadius),
+            topEnd = CornerSize(outerRadius),
+            bottomStart = CornerSize(innerRadius),
+            bottomEnd = CornerSize(innerRadius)
+        )
+        index == size - 1 -> SquircleShape(
+            topStart = CornerSize(innerRadius),
+            topEnd = CornerSize(innerRadius),
+            bottomStart = CornerSize(outerRadius),
+            bottomEnd = CornerSize(outerRadius)
+        )
+        else -> RoundedCornerShape(innerRadius)
     }
 }
 

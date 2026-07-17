@@ -57,6 +57,7 @@ import com.cemcakmak.hydrotracker.data.models.VolumeUnit
 import com.cemcakmak.hydrotracker.data.repository.UserRepository
 import com.cemcakmak.hydrotracker.notifications.HydroNotificationScheduler
 import com.cemcakmak.hydrotracker.ui.theme.HydroTrackerTheme
+import com.cemcakmak.hydrotracker.ui.theme.rememberBeverageColorRoles
 import com.cemcakmak.hydrotracker.utils.DateTimeFormatters
 import com.cemcakmak.hydrotracker.utils.UserDayCalculator
 import com.cemcakmak.hydrotracker.utils.VolumeUnitConverter
@@ -545,6 +546,7 @@ fun HomeScreen(
                             haptics.performHapticFeedback(HapticFeedbackType.Confirm)
                         },
                         beverages = activeBeverages,
+                        useBeverageColors = themePreferences.useBeverageColors,
                         modifier = Modifier.fillMaxWidth()
                     )
 
@@ -561,6 +563,8 @@ fun HomeScreen(
                             CarouselWaterCard(
                                 preset = preset,
                                 userProfile = userProfile,
+                                selectedBeverageKey = selectedBeverage.storageKey,
+                                useBeverageColors = themePreferences.useBeverageColors,
                                 onClick = {
                                     addWaterIntake(preset.volume, preset.name)
                                     haptics.performHapticFeedback(HapticFeedbackType.Confirm)
@@ -570,7 +574,6 @@ fun HomeScreen(
                                     showEditPresetSheet = true
                                     haptics.performHapticFeedback(HapticFeedbackType.LongPress)
                                 },
-                                useTertiaryColors = !selectedBeverage.isWater,
                                 modifier = Modifier
                                     .height(150.dp)
                                     .maskClip(SquircleShape())
@@ -578,11 +581,12 @@ fun HomeScreen(
                         } else {
                             // Add button at the end
                             AddContainerCard(
+                                selectedBeverageKey = selectedBeverage.storageKey,
+                                useBeverageColors = themePreferences.useBeverageColors,
                                 onClick = {
                                     showAddPresetSheet = true
                                     haptics.performHapticFeedback(HapticFeedbackType.Confirm)
                                 },
-                                useTertiaryColors = !selectedBeverage.isWater,
                                 modifier = Modifier
                                     .height(150.dp)
                                     .maskClip(SquircleShape())
@@ -594,6 +598,7 @@ fun HomeScreen(
                     EffectiveHydrationInfoCard(
                         selectedBeverage = selectedBeverage,
                         beverages = activeBeverages,
+                        useBeverageColors = themePreferences.useBeverageColors,
                         modifier = Modifier.fillMaxWidth()
                     )
                 }
@@ -646,7 +651,8 @@ fun HomeScreen(
                 selectedBeverage = newBeverage
             },
             volumeUnit = userProfile.volumeUnit,
-            beverages = activeBeverages
+            beverages = activeBeverages,
+            useBeverageColors = themePreferences.useBeverageColors
         )
     }
 
@@ -788,26 +794,23 @@ fun CarouselWaterCard(
     modifier: Modifier = Modifier,
     preset: ContainerPreset,
     userProfile: UserProfile,
+    selectedBeverageKey: String = BeverageType.WATER.name,
+    useBeverageColors: Boolean = false,
     onClick: () -> Unit,
-    onLongPress: () -> Unit = {},
-    useTertiaryColors: Boolean = false
+    onLongPress: () -> Unit = {}
 ) {
     val context = LocalContext.current
+    val beverageColors = rememberBeverageColorRoles(
+        beverageKey = selectedBeverageKey,
+        useBeverageColors = useBeverageColors
+    )
     val containerColor by animateColorAsState(
-        targetValue = if (useTertiaryColors) {
-            MaterialTheme.colorScheme.tertiary
-        } else {
-            MaterialTheme.colorScheme.primary
-        },
+        targetValue = beverageColors.color,
         animationSpec = MaterialTheme.motionScheme.slowEffectsSpec(),
         label = "carousel_card_container_color"
     )
     val contentColor by animateColorAsState(
-        targetValue = if (useTertiaryColors) {
-            MaterialTheme.colorScheme.onTertiary
-        } else {
-            MaterialTheme.colorScheme.onPrimary
-        },
+        targetValue = beverageColors.onColor,
         animationSpec = MaterialTheme.motionScheme.slowEffectsSpec(),
         label = "carousel_card_content_color"
     )
@@ -878,24 +881,21 @@ fun CarouselWaterCard(
 @Composable
 fun AddContainerCard(
     modifier: Modifier = Modifier,
-    onClick: () -> Unit,
-    useTertiaryColors: Boolean = false
+    selectedBeverageKey: String = BeverageType.WATER.name,
+    useBeverageColors: Boolean = false,
+    onClick: () -> Unit
 ) {
+    val beverageColors = rememberBeverageColorRoles(
+        beverageKey = selectedBeverageKey,
+        useBeverageColors = useBeverageColors
+    )
     val containerColor by animateColorAsState(
-        targetValue = if (useTertiaryColors) {
-            MaterialTheme.colorScheme.tertiaryContainer
-        } else {
-            MaterialTheme.colorScheme.primaryContainer
-        },
+        targetValue = beverageColors.containerColor,
         animationSpec = MaterialTheme.motionScheme.slowEffectsSpec(),
         label = "carousel_card_container_color"
     )
     val contentColor by animateColorAsState(
-        targetValue = if (useTertiaryColors) {
-            MaterialTheme.colorScheme.onTertiaryContainer
-        } else {
-            MaterialTheme.colorScheme.onPrimaryContainer
-        },
+        targetValue = beverageColors.onContainerColor,
         animationSpec = MaterialTheme.motionScheme.slowEffectsSpec(),
         label = "carousel_card_content_color"
     )
@@ -936,6 +936,7 @@ private fun BeverageSelectionSection(
     selectedBeverage: BeverageOption,
     onBeverageChange: (BeverageOption) -> Unit,
     beverages: List<BeverageOption> = BeverageType.getAllSorted().map { it.toOption() },
+    useBeverageColors: Boolean = false,
 ) {
     val haptics = LocalHapticFeedback.current
 
@@ -960,22 +961,17 @@ private fun BeverageSelectionSection(
                 beverage.displayName
             }
 
-            val useTertiaryColors = isSelected && !safeSelected.isWater
+            val beverageColors = rememberBeverageColorRoles(
+                beverageKey = beverage.storageKey,
+                useBeverageColors = useBeverageColors
+            )
             val checkedContainerColor by animateColorAsState(
-                targetValue = if (useTertiaryColors) {
-                    MaterialTheme.colorScheme.tertiary
-                } else {
-                    MaterialTheme.colorScheme.primary
-                },
+                targetValue = beverageColors.color,
                 animationSpec = MaterialTheme.motionScheme.slowEffectsSpec(),
                 label = "beverage_toggle_container_color"
             )
             val checkedContentColor by animateColorAsState(
-                targetValue = if (useTertiaryColors) {
-                    MaterialTheme.colorScheme.onTertiary
-                } else {
-                    MaterialTheme.colorScheme.onPrimary
-                },
+                targetValue = beverageColors.onColor,
                 animationSpec = MaterialTheme.motionScheme.slowEffectsSpec(),
                 label = "beverage_toggle_content_color"
             )
@@ -1036,7 +1032,8 @@ private fun BeverageSelectionSection(
 private fun EffectiveHydrationInfoCard(
     modifier: Modifier = Modifier,
     selectedBeverage: BeverageOption,
-    beverages: List<BeverageOption> = BeverageType.getAllSorted().map { it.toOption() }
+    beverages: List<BeverageOption> = BeverageType.getAllSorted().map { it.toOption() },
+    useBeverageColors: Boolean = false,
 ) {
     val safeSelected = if (selectedBeverage in beverages) selectedBeverage else beverages.first()
 
@@ -1054,7 +1051,10 @@ private fun EffectiveHydrationInfoCard(
             transformOrigin = TransformOrigin(0.5f, 0f)
         ) + fadeOut(animationSpec = MaterialTheme.motionScheme.slowEffectsSpec())
     ) {
-        EffectiveHydrationCardContent(safeSelected = safeSelected)
+        EffectiveHydrationCardContent(
+            safeSelected = safeSelected,
+            useBeverageColors = useBeverageColors
+        )
     }
 }
 
@@ -1064,9 +1064,15 @@ private fun EffectiveHydrationInfoCard(
 @OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 private fun EffectiveHydrationCardContent(
+    modifier: Modifier = Modifier,
     safeSelected: BeverageOption,
-    modifier: Modifier = Modifier
+    useBeverageColors: Boolean = false,
 ) {
+    val beverageColors = rememberBeverageColorRoles(
+        beverageKey = safeSelected.storageKey,
+        useBeverageColors = useBeverageColors
+    )
+
     Box(
         modifier = modifier,
         contentAlignment = Alignment.Center
@@ -1075,7 +1081,8 @@ private fun EffectiveHydrationCardContent(
             modifier = modifier
                 .widthIn(max = 280.dp),
             shape = PillShape,
-            color = MaterialTheme.colorScheme.tertiaryContainer
+            color = beverageColors.containerColor,
+            contentColor = beverageColors.onContainerColor
         ) {
             Row(
                 modifier = Modifier
@@ -1087,7 +1094,7 @@ private fun EffectiveHydrationCardContent(
                 Icon(
                     imageVector = ImageVector.vectorResource(R.drawable.info_filled),
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onTertiaryContainer,
+                    tint = beverageColors.onContainerColor,
                     modifier = Modifier.size(18.dp)
                 )
 
@@ -1176,7 +1183,7 @@ private val previewEntries: List<WaterIntakeEntry>
     get() {
         val now = System.currentTimeMillis()
         val date = UserDayCalculator.getCurrentUserDayString(
-            wakeUpTime = "07:00",
+            dayEndTime = "23:00",
             dayEndMode = DayEndMode.SLEEP_TIME
         )
         return listOf(
@@ -1227,6 +1234,7 @@ private class PreviewWaterIntakeDao : WaterIntakeDao {
     override suspend fun getAllEntriesForDateRangeSync(startDate: String, endDate: String): List<WaterIntakeEntry> =
         previewEntries
     override suspend fun getAllEntriesForExportSync(): List<WaterIntakeEntry> = previewEntries
+    override suspend fun getAllEntriesSync(): List<WaterIntakeEntry> = previewEntries
     override suspend fun deleteEntriesBefore(timestampMillis: Long) {}
     override suspend fun countEntriesBefore(timestampMillis: Long): Int = previewEntries.size
     override fun getTotalIntakeForDate(date: String): Flow<Double> = flowOf(1350.0)
@@ -1235,6 +1243,7 @@ private class PreviewWaterIntakeDao : WaterIntakeDao {
     override fun getLast30DaysEntries(): Flow<List<WaterIntakeEntry>> = flowOf(previewEntries)
     override fun getAllEntries(): Flow<List<WaterIntakeEntry>> = flowOf(previewEntries)
     override suspend fun updateEntry(entry: WaterIntakeEntry) {}
+    override suspend fun updateEntries(entries: List<WaterIntakeEntry>) {}
     override suspend fun deleteEntry(entry: WaterIntakeEntry) {}
     override suspend fun deleteEntryById(entryId: Long) {}
     override suspend fun deleteAllEntries() {}

@@ -11,6 +11,8 @@ import com.cemcakmak.hydrotracker.data.database.entities.WaterIntakeEntry
 import com.cemcakmak.hydrotracker.data.database.entities.DailySummary
 import com.cemcakmak.hydrotracker.data.models.ContainerPreset
 import com.cemcakmak.hydrotracker.data.models.BeverageType
+import com.cemcakmak.hydrotracker.data.models.DayEndMode
+import com.cemcakmak.hydrotracker.data.models.UserProfile
 import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.LocalDate
@@ -55,12 +57,24 @@ class WaterIntakeRepository(
         private const val TAG = "WaterIntakeRepository"
     }
 
-    // Get today's user day string based on wake-up time
+    // Get today's user day string based on the configured day boundary.
     private suspend fun getTodayUserDayString(): String {
         val userProfile = userRepository.userProfile.first()
-        val wakeUpTime = userProfile?.wakeUpTime ?: "07:00"
-        val dayEndMode = userProfile?.dayEndMode ?: com.cemcakmak.hydrotracker.data.models.DayEndMode.SLEEP_TIME
-        return UserDayCalculator.getCurrentUserDayString(wakeUpTime, dayEndMode)
+        val dayEndTime = getDayEndTime(userProfile)
+        val dayEndMode = userProfile?.dayEndMode ?: DayEndMode.SLEEP_TIME
+        return UserDayCalculator.getCurrentUserDayString(dayEndTime, dayEndMode)
+    }
+
+    /**
+     * Returns the boundary time for the current user-day settings.
+     * For [DayEndMode.SLEEP_TIME] this is the user's sleep time; for [DayEndMode.MIDNIGHT]
+     * the value is unused, so a placeholder is returned.
+     */
+    private fun getDayEndTime(userProfile: UserProfile?): String {
+        return when (userProfile?.dayEndMode) {
+            DayEndMode.MIDNIGHT -> "00:00"
+            else -> userProfile?.sleepTime ?: "23:00"
+        }
     }
 
     /**
@@ -69,7 +83,7 @@ class WaterIntakeRepository(
      */
     suspend fun checkAndHandleNewUserDay() = withContext(Dispatchers.IO) {
         val userProfile = userRepository.userProfile.first() ?: return@withContext
-        val wakeUpTime = userProfile.wakeUpTime
+        val dayEndTime = getDayEndTime(userProfile)
         val currentTime = System.currentTimeMillis()
         val lastCheckTime = prefs.getLong("last_day_check_time", 0L)
 
@@ -80,12 +94,79 @@ class WaterIntakeRepository(
         }
 
         val dayEndMode = userProfile.dayEndMode
-        if (UserDayCalculator.hasNewUserDayStarted(lastCheckTime, wakeUpTime, dayEndMode)) {
+        if (UserDayCalculator.hasNewUserDayStarted(lastCheckTime, dayEndTime, dayEndMode)) {
             // New user day has started, update widgets to reflect reset
             HydroWidgetUpdater.updateAll(context)
-            
+
             // Store the new check time
             prefs.edit { putLong("last_day_check_time", currentTime) }
+        }
+    }
+
+    /**
+     * One-time repair for the SLEEP_TIME boundary fix.
+     *
+     * Old entries were dated using wake-up time as the boundary, while the UI claimed the boundary
+     * was sleep time. This routine rewrites every stored [WaterIntakeEntry.date] using the current
+     * day-end settings, rebuilds all daily summaries, and records the migration so it never runs
+     * again.
+     */
+    suspend fun repairUserDayBoundariesIfNeeded() = withContext(Dispatchers.IO) {
+        try {
+            val appPreferences = userRepository.appPreferences.first()
+            if (appPreferences.dateBoundaryMigratedVersion >= 1) {
+                Log.d(TAG, "User-day boundary migration already completed")
+                return@withContext
+            }
+
+            val userProfile = userRepository.userProfile.first()
+            if (userProfile == null || !userProfile.isOnboardingCompleted) {
+                Log.d(TAG, "Skipping boundary migration: onboarding not complete")
+                return@withContext
+            }
+
+            Log.i(TAG, "🛠️ Starting user-day boundary migration...")
+            val dayEndTime = getDayEndTime(userProfile)
+            val dayEndMode = userProfile.dayEndMode
+
+            // Recompute the user-day string for every entry, including hidden ones, because
+            // hidden entries still participate in duplicate detection.
+            val allEntries = waterIntakeDao.getAllEntriesSync()
+            if (allEntries.isNotEmpty()) {
+                val recomputedEntries = allEntries.map { entry ->
+                    val newDate = UserDayCalculator.getUserDayStringForTimestamp(
+                        entry.timestamp,
+                        dayEndTime,
+                        dayEndMode
+                    )
+                    entry.copy(date = newDate)
+                }
+
+                // Bulk-update entries with their recomputed dates.
+                waterIntakeDao.updateEntries(recomputedEntries)
+                Log.i(TAG, "✅ Migrated ${recomputedEntries.size} entries to the corrected user-day boundary")
+            } else {
+                Log.d(TAG, "No entries to migrate")
+            }
+
+            // Rebuild summaries from scratch so they match the recomputed dates.
+            dailySummaryDao.deleteAllSummaries()
+            val distinctDates = waterIntakeDao.getAllEntriesSync()
+                .filter { !it.isHidden }
+                .map { it.date }
+                .distinct()
+            distinctDates.forEach { date ->
+                updateDailySummaryForDate(date)
+            }
+            Log.i(TAG, "✅ Rebuilt ${distinctDates.size} daily summaries")
+
+            // Refresh widgets and record completion.
+            HydroWidgetUpdater.updateAll(context)
+            userRepository.updateDateBoundaryMigratedVersion(1)
+            Log.i(TAG, "🎉 User-day boundary migration complete")
+        } catch (e: Exception) {
+            Log.e(TAG, "❌ User-day boundary migration failed", e)
+            // Do not mark as completed so the next launch retries.
         }
     }
 

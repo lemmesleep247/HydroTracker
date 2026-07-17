@@ -46,8 +46,14 @@ interface WaterIntakeDao {
     @Query("SELECT * FROM water_intake_entries WHERE is_hidden = 0 ORDER BY timestamp DESC")
     suspend fun getAllEntriesForExportSync(): List<WaterIntakeEntry>
 
+    @Query("SELECT * FROM water_intake_entries ORDER BY timestamp DESC")
+    suspend fun getAllEntriesSync(): List<WaterIntakeEntry>
+
     @Update
     suspend fun updateEntry(entry: WaterIntakeEntry)
+
+    @Update
+    suspend fun updateEntries(entries: List<WaterIntakeEntry>)
 
     @Delete
     suspend fun deleteEntry(entry: WaterIntakeEntry)

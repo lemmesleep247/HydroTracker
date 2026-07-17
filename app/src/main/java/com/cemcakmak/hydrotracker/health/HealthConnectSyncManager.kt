@@ -149,7 +149,7 @@ object HealthConnectSyncManager {
                 var errorCount = 0
 
                 // Process each external record with conflict resolution
-                val wakeUpTime = userProfile.wakeUpTime
+                val dayEndTime = userProfile.sleepTime
                 val dayEndMode = userProfile.dayEndMode
                 externalRecords.forEach { record ->
                     try {
@@ -158,7 +158,7 @@ object HealthConnectSyncManager {
                             record,
                             record.metadata.dataOrigin.toString(),
                             com.cemcakmak.hydrotracker.data.models.EntrySource.HEALTH_CONNECT_EXTERNAL,
-                            wakeUpTime,
+                            dayEndTime,
                             dayEndMode
                         )
 
@@ -310,7 +310,7 @@ object HealthConnectSyncManager {
                 var importedCount = 0
                 var skippedCount = 0
 
-                val wakeUpTime = userProfile.wakeUpTime
+                val dayEndTime = userProfile.sleepTime
                 val dayEndMode = userProfile.dayEndMode
                 hydroTrackerRecords.forEach { record ->
                     try {
@@ -323,7 +323,7 @@ object HealthConnectSyncManager {
                             record,
                             record.metadata.dataOrigin.toString(),
                             com.cemcakmak.hydrotracker.data.models.EntrySource.HEALTH_CONNECT_RESTORED,
-                            wakeUpTime,
+                            dayEndTime,
                             dayEndMode,
                             healthConnectRecordId = recordIdForLocalStorage
                         )
@@ -520,7 +520,7 @@ object HealthConnectSyncManager {
         return try {
             // Use the entry's pre-computed date field (user-day) as the single source of truth.
             // Recomputing from timestamp via toLocalDate() would produce a different result
-            // for entries before wake-up time, causing us to query the wrong date.
+            // for entries before the configured day boundary, causing us to query the wrong date.
             val entryDate = newEntry.date
 
             // Get all entries for the same user-day (including hidden ones to prevent re-import)

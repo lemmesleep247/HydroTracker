@@ -345,8 +345,11 @@ fun HydroTrackerApp(
     var aboutWasPop by remember { mutableStateOf(false) }
 
     LaunchedEffect(isOnboardingCompleted, userProfile) {
-        // Check for new user day when app starts
         if (isOnboardingCompleted && userProfile != null) {
+            // One-time repair: SLEEP_TIME previously used wake-up time as the boundary.
+            waterIntakeRepository.repairUserDayBoundariesIfNeeded()
+
+            // Check for new user day when app starts
             waterIntakeRepository.checkAndHandleNewUserDay()
 
             // Perform app launch sync to import any missed external Health Connect data
@@ -649,6 +652,7 @@ fun HydroTrackerApp(
                                 onNavBarLabelModeChange = themeViewModel::setNavBarLabelMode,
                                 isBlurSupported = themeViewModel.isBlurSupported(),
                                 onEdgeEffectChange = themeViewModel::setEdgeEffect,
+                                onUseBeverageColorsChange = themeViewModel::setUseBeverageColors,
                                 onNavigateToWidget = {
                                     appearanceWasPop = true
                                     backStack.add(NavigationRoutes.SettingsWidget)
@@ -1015,7 +1019,8 @@ fun HydroTrackerApp(
                         selectedBeverage = pastEntrySelectedBeverage,
                         onBeverageChange = { pastEntrySelectedBeverage = it },
                         volumeUnit = userProfile.volumeUnit,
-                        beverages = activeBeverages
+                        beverages = activeBeverages,
+                        useBeverageColors = themePreferences.useBeverageColors
                     )
                 }
             }

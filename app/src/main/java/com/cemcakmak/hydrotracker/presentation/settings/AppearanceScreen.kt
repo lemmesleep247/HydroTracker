@@ -109,6 +109,7 @@ fun AppearanceScreen(
     onNavBarLabelModeChange: (NavBarLabelMode) -> Unit = {},
     isBlurSupported: Boolean = true,
     onEdgeEffectChange: (EdgeEffect) -> Unit = {},
+    onUseBeverageColorsChange: (Boolean) -> Unit = {},
     onNavigateToWidget: () -> Unit = {},
     onNavigateBack: () -> Unit = {}
 ) {
@@ -182,7 +183,9 @@ fun AppearanceScreen(
                 HomeScreenSection(
                     edgeEffect = themePreferences.edgeEffect,
                     isBlurSupported = isBlurSupported,
-                    onOpenEdgeEffectSheet = { showEdgeEffectSheet = true }
+                    useBeverageColors = themePreferences.useBeverageColors,
+                    onOpenEdgeEffectSheet = { showEdgeEffectSheet = true },
+                    onUseBeverageColorsChange = onUseBeverageColorsChange
                 )
 
                 FontSection(
@@ -764,7 +767,9 @@ private fun NavLabelBottomSheet(
 private fun HomeScreenSection(
     edgeEffect: EdgeEffect,
     isBlurSupported: Boolean,
-    onOpenEdgeEffectSheet: () -> Unit
+    useBeverageColors: Boolean,
+    onOpenEdgeEffectSheet: () -> Unit,
+    onUseBeverageColorsChange: (Boolean) -> Unit
 ) {
     val haptics = LocalHapticFeedback.current
     // Devices that can't blur never show the Blurred option, so a stored BLURRED value is
@@ -776,43 +781,110 @@ private fun HomeScreenSection(
     }
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         SettingsSectionHeader(stringResource(R.string.appearance_home_header))
-        SettingsGroupCard(
-            index = 0,
-            size = 1,
-            onClick = {
-                haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
-                onOpenEdgeEffectSheet()
-            }
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically
+
+        Column {
+            SettingsGroupCard(
+                index = 0,
+                size = 2
             ) {
-                Icon(
-                    imageVector = ImageVector.vectorResource(R.drawable.blur_on_filled),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(24.dp)
-                )
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = stringResource(R.string.appearance_edge_effect_title),
-                        style = MaterialTheme.typography.titleMedium
-                    )
-                    Text(
-                        text = stringResource(effective.labelResId),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Crossfade(
+                        targetState = useBeverageColors,
+                        animationSpec = tween(400),
+                        label = "beverageColorsIcon"
+                    ) { on ->
+                        Icon(
+                            imageVector = if (on) {
+                                ImageVector.vectorResource(R.drawable.colors_filled)
+                            } else {
+                                ImageVector.vectorResource(R.drawable.colors)
+                            },
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.appearance_beverage_colors_title),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            text = stringResource(R.string.appearance_beverage_colors_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = useBeverageColors,
+                        onCheckedChange = { enabled ->
+                            onUseBeverageColorsChange(enabled)
+                            val hapticType = if (enabled) {
+                                HapticFeedbackType.ToggleOn
+                            } else {
+                                HapticFeedbackType.ToggleOff
+                            }
+                            haptics.performHapticFeedback(hapticType)
+                        },
+                        thumbContent = if (useBeverageColors) {
+                            {
+                                Icon(
+                                    imageVector = ImageVector.vectorResource(R.drawable.check_filled),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(SwitchDefaults.IconSize),
+                                )
+                            }
+                        } else {
+                            null
+                        }
                     )
                 }
-                Icon(
-                    imageVector = ImageVector.vectorResource(R.drawable.keyboard_arrow_up_filled),
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            }
+
+            SettingsGroupCard(
+                index = 1,
+                size = 2,
+                onClick = {
+                    haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
+                    onOpenEdgeEffectSheet()
+                }
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(R.drawable.blur_on_filled),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp)
+                    )
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = stringResource(R.string.appearance_edge_effect_title),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            text = stringResource(effective.labelResId),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Icon(
+                        imageVector = ImageVector.vectorResource(R.drawable.keyboard_arrow_up_filled),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }
@@ -1136,6 +1208,9 @@ fun AppearanceScreenWithAppBarPreview() {
             },
             onEdgeEffectChange = { style ->
                 previewPreferences = previewPreferences.copy(edgeEffect = style)
+            },
+            onUseBeverageColorsChange = { enabled ->
+                previewPreferences = previewPreferences.copy(useBeverageColors = enabled)
             }
         )
     }

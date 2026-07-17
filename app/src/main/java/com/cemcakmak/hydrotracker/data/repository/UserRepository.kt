@@ -63,6 +63,10 @@ class UserRepository(context: Context) {
         dataStore.updateData { it.copy(widget = widgetPreferences) }
     }
 
+    suspend fun updateDateBoundaryMigratedVersion(version: Int) {
+        dataStore.updateData { it.copy(dateBoundaryMigratedVersion = version) }
+    }
+
     /** Resets all preferences (profile, theme, beverages) back to defaults. */
     suspend fun clearUserProfile() {
         dataStore.updateData { AppPreferences() }

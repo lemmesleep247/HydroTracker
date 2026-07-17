@@ -26,4 +26,9 @@ data class AppPreferences(
     val hapticsEnabled: Boolean = true,
     val lastHealthConnectImportTime: Long? = null,
     val widgetPreviewRevision: Int = 0,
+    /**
+     * Tracks whether local entry dates and daily summaries have been recomputed after the
+     * SLEEP_TIME boundary was corrected to use the user's sleep time. 0 = not migrated, 1 = done.
+     */
+    val dateBoundaryMigratedVersion: Int = 0,
 )

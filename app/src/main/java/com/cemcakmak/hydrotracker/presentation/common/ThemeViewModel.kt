@@ -141,6 +141,16 @@ class ThemeViewModel(private val userRepository: UserRepository) : ViewModel() {
         }
     }
 
+    fun setUseBeverageColors(enabled: Boolean) {
+        viewModelScope.launch {
+            val newPreferences = _themePreferences.value.copy(
+                useBeverageColors = enabled
+            )
+            _themePreferences.value = newPreferences
+            userRepository.updateThemePreferences(newPreferences)
+        }
+    }
+
     fun isDynamicColorAvailable(): Boolean {
         return android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S
     }
