@@ -1,12 +1,12 @@
 [versions]
-agp = "9.3.0-rc02"
-kotlin = "2.4.0"
+agp = "9.3.0"
+kotlin = "2.4.10"
 ksp = "2.3.9"
 coreKtx = "1.19.0"
 lifecycleRuntimeKtx = "2.11.0"
 activityCompose = "1.13.0"
 composeBom = "2026.06.01"
-material3-expressive = "1.5.0-alpha23"
+material3-expressive = "1.5.0-alpha24"
 material3WindowSize = "1.4.0"
 material = "1.14.0"
 navigation3 = "1.1.4"
@@ -19,6 +19,7 @@ datastore = "1.2.1"
 exifinterface = "1.4.2"
 graphicsShapes = "1.1.0"
 serializationJson = "1.11.0"
+glance = "1.2.0-rc01"
 
 # Testing (JVM/Robolectric)
 robolectric = "4.16.1"
@@ -69,6 +70,12 @@ androidx-datastore = { group = "androidx.datastore", name = "datastore", version
 androidx-exifinterface = { group = "androidx.exifinterface", name = "exifinterface", version.ref = "exifinterface" }
 androidx-graphics-shapes = { group = "androidx.graphics", name = "graphics-shapes", version.ref = "graphicsShapes" }
 kotlinx-serialization-json = { group = "org.jetbrains.kotlinx", name = "kotlinx-serialization-json", version.ref = "serializationJson" }
+
+# Jetpack Glance (home-screen widgets)
+androidx-glance-appwidget = { group = "androidx.glance", name = "glance-appwidget", version.ref = "glance" }
+androidx-glance-material3 = { group = "androidx.glance", name = "glance-material3", version.ref = "glance" }
+androidx-glance-preview = { group = "androidx.glance", name = "glance-preview", version.ref = "glance" }
+androidx-glance-appwidget-preview = { group = "androidx.glance", name = "glance-appwidget-preview", version.ref = "glance" }
 
 # Testing (JVM/Robolectric)
 androidx-room-testing = { group = "androidx.room", name = "room-testing", version.ref = "room" }
