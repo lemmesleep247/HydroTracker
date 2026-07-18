@@ -22,7 +22,7 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Install compileSDK platform
-        run: sdkmanager "platforms;android-37"
+        run: sdkmanager "platforms;android-37.1"
 
       - name: Set up Gradle (caching + wrapper validation)
         uses: gradle/actions/setup-gradle@v4
