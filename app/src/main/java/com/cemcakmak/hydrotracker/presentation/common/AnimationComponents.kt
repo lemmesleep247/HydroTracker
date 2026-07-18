@@ -1,7 +1,5 @@
 package com.cemcakmak.hydrotracker.presentation.common
 
-import android.os.Build
-import android.view.HapticFeedbackConstants
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.EnterTransition
@@ -45,15 +43,15 @@ import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import com.cemcakmak.hydrotracker.ui.theme.HydroTrackerTheme
-import com.cemcakmak.hydrotracker.utils.SmartHaptics
 import kotlinx.coroutines.delay
 import kotlin.math.max
 import kotlin.math.min
@@ -183,7 +181,7 @@ fun AnimatedNumber(
     animationConfig: RollingNumberConfig = RollingNumberConfig(),
     animateEntry: Boolean = true,
     entryDelayMillis: Int = 0,
-    entryStepCount: Int = 15,
+    entryStepCount: Int = 10,
     entryStepSpacingMillis: Int = DEFAULT_ENTRY_STEP_SPACING_MS
 ) {
     data class DisplayState(val value: Double, val isEntryStart: Boolean)
@@ -396,7 +394,7 @@ fun RollingNumberText(
     animationConfig: RollingNumberConfig = RollingNumberConfig(),
     skipEntryAnimation: Boolean = false
 ) {
-    val view = LocalView.current
+    val haptics = LocalHapticFeedback.current
 
     // Plain remembered holders (not snapshot state) so updating them never triggers
     // recomposition; the direction must be computed against the value from the previous
@@ -420,11 +418,7 @@ fun RollingNumberText(
                 now - lastChangeTime[0] >
                 animationConfig.rapidChangeThresholdMs * 1_000_000L
             ) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-                    SmartHaptics.performRaw(view.context, HapticFeedbackConstants.SEGMENT_FREQUENT_TICK)
-                } else {
-                    SmartHaptics.performRaw(view.context, HapticFeedbackConstants.CLOCK_TICK)
-                }
+                haptics.performHapticFeedback(HapticFeedbackType.SegmentFrequentTick)
             }
             lastChangeTime[0] = now
         }
