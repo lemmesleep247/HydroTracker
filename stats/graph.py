@@ -23,9 +23,9 @@ def parse_args():
     parser.add_argument('--output', default=DEFAULT_OUTPUT, help=f"Output image file path (default: {DEFAULT_OUTPUT})")
     return parser.parse_args()
 
-def get_headers(token):
+def get_headers(token, accept='application/vnd.github+json'):
     headers = {
-        'Accept': 'application/vnd.github+json',
+        'Accept': accept,
         'X-GitHub-Api-Version': '2026-03-10',
     }
     if token:
@@ -39,7 +39,7 @@ def fetch_stars_history(repo, token):
     """
     print(f"Fetching star history for {repo}...")
     url = f"https://api.github.com/repos/{repo}/stargazers"
-    headers = get_headers(token)
+    headers = get_headers(token, accept='application/vnd.github.star+json')
     stars_data = []
     page = 1
     per_page = 100 
