@@ -142,7 +142,7 @@ You can find all of the source inside the **settings page** of the app or from [
 
 ## Localisation
 
-Help translate HydroTracker into your language. We use [Crowdin](https://crowdin.com/project/hydrotracker) to manage translations. See [TRANSLATIONS.md](TRANSLATIONS.md) for details.
+Help translate HydroTracker into your language. We use [Crowdin](https://crowdin.com/project/hydrotracker) to manage translations. See [TRANSLATIONS.md](TRANSLATIONS.md) for details, or join the [translation discussion](https://github.com/Econ01/HydroTracker/discussions/54) to request a new language.
 
 ---
 
