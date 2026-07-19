@@ -21,6 +21,7 @@
   <img src="https://img.shields.io/badge/Android-API%2026+-green.svg" alt="API Level">
   <img src="https://img.shields.io/badge/dynamic/toml?url=https://raw.githubusercontent.com/Econ01/HydroTracker/master/gradle/libs.versions.toml&query=$.versions.kotlin&label=Kotlin&color=blue" alt="Kotlin Version">
   <img src="https://img.shields.io/badge/License-GPL%20v3-orange.svg" alt="License">
+  <a href="https://crowdin.com/project/hydrotracker"><img src="https://badges.crowdin.net/hydrotracker/localized.svg" alt="Localisation"></a>
   <img src="https://img.shields.io/badge/dynamic/toml?url=https://raw.githubusercontent.com/Econ01/HydroTracker/master/gradle/libs.versions.toml&query=$.versions.composeBom&label=Compose%20BOM&color=purple" alt="Compose Version">
   <a href="https://github.com/Econ01/HydroTracker/actions/workflows/unit-tests.yml"><img src="https://github.com/Econ01/HydroTracker/actions/workflows/unit-tests.yml/badge.svg" alt="Unit Tests"></a>
 </p>
@@ -136,6 +137,12 @@ You can find all of the source inside the **settings page** of the app or from [
     <img src="https://img.shields.io/badge/PayPal-00457C?style=for-the-badge&logo=paypal&logoColor=white" alt="PayPal" />
   </a>
 </div>
+
+---
+
+## Localisation
+
+Help translate HydroTracker into your language. We use [Crowdin](https://crowdin.com/project/hydrotracker) to manage translations. See [TRANSLATIONS.md](TRANSLATIONS.md) for details.
 
 ---
 
