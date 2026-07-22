@@ -1,3 +1,17 @@
+[1.3]
+Added
+- 6 new font options added:
+  - Bricolage Grotesque
+  - Darker Grotesque
+  - DM Serif Display
+  - Geist
+  - Instrument Serif
+  - Inter
+- New language settings menu and translation progress
+
+Fixed
+- Fixed large font size compatibility
+
 [1.2]
 - Performance improvements
 
