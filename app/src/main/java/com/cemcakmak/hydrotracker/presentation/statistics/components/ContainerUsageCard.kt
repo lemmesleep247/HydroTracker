@@ -20,6 +20,8 @@
 
 package com.cemcakmak.hydrotracker.presentation.statistics.components
 
+import androidx.compose.foundation.MarqueeSpacing
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -37,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.style.TextAlign
@@ -73,6 +76,9 @@ fun ContainerUsageCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(3.dp)
             ) {
+                val fontScale = LocalDensity.current.fontScale
+                val textStyle = if (fontScale > 1f) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMediumEmphasized
+
                 Surface(
                     shape = SquircleShape(
                         topStart = CornerSize(24.dp),
@@ -89,10 +95,16 @@ fun ContainerUsageCard(
                     Text(
                         modifier = Modifier
                             .weight(2f)
-                            .padding(horizontal = 8.dp, vertical = 16.dp),
+                            .padding(horizontal = 8.dp, vertical = 16.dp)
+                            .basicMarquee(
+                                initialDelayMillis = 3000,
+                                repeatDelayMillis = 2000,
+                                velocity = 20.dp,
+                                spacing = MarqueeSpacing.fractionOfContainer(0.2f)
+                            ),
                         text = stringResource(R.string.statistics_container_header_container),
                         textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.titleMediumEmphasized
+                        style = textStyle
                     )
                 }
 
@@ -112,10 +124,16 @@ fun ContainerUsageCard(
                     Text(
                         modifier = Modifier
                             .weight(1f)
-                            .padding(horizontal = 8.dp, vertical = 16.dp),
+                            .padding(horizontal = 8.dp, vertical = 16.dp)
+                            .basicMarquee(
+                                initialDelayMillis = 3000,
+                                repeatDelayMillis = 2000,
+                                velocity = 20.dp,
+                                spacing = MarqueeSpacing.fractionOfContainer(0.2f)
+                            ),
                         text = stringResource(R.string.statistics_container_header_volume),
                         textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.titleMediumEmphasized
+                        style = textStyle
                     )
                 }
 
@@ -135,10 +153,16 @@ fun ContainerUsageCard(
                     Text(
                         modifier = Modifier
                             .weight(1f)
-                            .padding(horizontal = 8.dp, vertical = 16.dp),
+                            .padding(horizontal = 8.dp, vertical = 16.dp)
+                            .basicMarquee(
+                                initialDelayMillis = 3000,
+                                repeatDelayMillis = 2000,
+                                velocity = 20.dp,
+                                spacing = MarqueeSpacing.fractionOfContainer(0.2f)
+                            ),
                         text = stringResource(R.string.statistics_container_header_uses),
                         textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.titleMediumEmphasized
+                        style = textStyle
                     )
                 }
             }
@@ -175,8 +199,15 @@ fun ContainerUsageCard(
                         )
 
                         Text(
+                            modifier = Modifier
+                                .basicMarquee(
+                                    initialDelayMillis = 3000,
+                                    repeatDelayMillis = 2000,
+                                    velocity = 20.dp,
+                                    spacing = MarqueeSpacing.fractionOfContainer(0.2f)
+                                ),
                             text = item.name,
-                            style = MaterialTheme.typography.titleMedium,
+                            style = MaterialTheme.typography.bodyLargeEmphasized,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
                         )
@@ -197,7 +228,7 @@ fun ContainerUsageCard(
                         modifier = Modifier.padding(horizontal = 8.dp, vertical = 16.dp),
                         text = volumeText,
                         textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.bodyLargeEmphasized,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
@@ -217,7 +248,7 @@ fun ContainerUsageCard(
                         modifier = Modifier.padding(horizontal = 18.dp, vertical = 16.dp),
                         text = compactCount,
                         textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.bodyLargeEmphasized,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )

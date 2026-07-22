@@ -32,6 +32,12 @@ val GoogleSansFlex = FontFamily(
 val Outfit = FontFamily(Font(R.font.outfit_variable))
 val DmSans = FontFamily(Font(R.font.dm_sans))
 val JetBrainsMono = FontFamily(Font(R.font.jetbrains_mono))
+val BricolageGrotesque = FontFamily(Font(R.font.bricolage_grotesque))
+val DarkerGrotesque = FontFamily(Font(R.font.darker_grotesque))
+val DMSerifDisplay = FontFamily(Font(R.font.dm_serif_display))
+val Geist = FontFamily(Font(R.font.geist))
+val InstrumentSerif = FontFamily(Font(R.font.instrument_serif))
+val Inter = FontFamily(Font(R.font.inter))
 
 fun fontFamilyFor(appFont: AppFont): FontFamily = when (appFont) {
     AppFont.GOOGLE_SANS_FLEX -> GoogleSansFlex
@@ -39,6 +45,12 @@ fun fontFamilyFor(appFont: AppFont): FontFamily = when (appFont) {
     AppFont.OUTFIT -> Outfit
     AppFont.DM_SANS -> DmSans
     AppFont.JETBRAINS_MONO -> JetBrainsMono
+    AppFont.BRICOLAGE_GROTESQUE -> BricolageGrotesque
+    AppFont.DARKER_GROTESQUE -> DarkerGrotesque
+    AppFont.DM_SERIF_DISPLAY -> DMSerifDisplay
+    AppFont.GEIST -> Geist
+    AppFont.INSTRUMENT_SERIF -> InstrumentSerif
+    AppFont.INTER -> Inter
 }
 
 fun hydroTypography(fontFamily: FontFamily): Typography = Typography().let { defaults ->

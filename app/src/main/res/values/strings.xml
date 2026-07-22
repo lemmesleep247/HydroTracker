@@ -561,6 +561,12 @@
     <string name="font_outfit" translatable="false">Outfit</string>
     <string name="font_dm_sans" translatable="false">DM Sans</string>
     <string name="font_jetbrains_mono" translatable="false">JetBrains Mono</string>
+    <string name="font_bricolage_grotesque" translatable="false">Bricolage Grotesque</string>
+    <string name="font_darker_grotesque" translatable="false">Darker Grotesque</string>
+    <string name="font_dm_serif_display" translatable="false">DM Serif Display</string>
+    <string name="font_geist" translatable="false">Geist</string>
+    <string name="font_instrument_serif" translatable="false">Instrument Serif</string>
+    <string name="font_inter" translatable="false">Inter</string>
     <string name="font_xiaomi_warning">Font styling on HyperOS/MIUI (Xiaomi group devices) does not work as intended due to their custom text engine.</string>
 
     <!-- Navigation-bar label mode -->
