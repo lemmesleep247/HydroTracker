@@ -193,56 +193,64 @@ private fun StatisticsContent(
 
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             val averageDailyIntakeDisplayUnit = VolumeUnitConverter.selectDisplayUnit(uiState.averageDailyIntake, volumeUnit)
-            HeroStatItem(
-                label = stringResource(R.string.statistics_label_average_daily_intake),
-                value = uiState.averageDailyIntake,
-                shape = SquircleShape(
-                    topStart = CornerSize(20.dp),
-                    topEnd = CornerSize(10.dp),
-                    bottomStart = CornerSize(40.dp),
-                    bottomEnd = CornerSize(10.dp)
-                ),
-                hapticsEnabled = false,
-                tooltipText = VolumeUnitConverter.format(context, uiState.averageDailyIntake, volumeUnit),
-                formatValue = { VolumeUnitConverter.formatValue(it.toDouble(), averageDailyIntakeDisplayUnit) },
-                suffix = stringResource(averageDailyIntakeDisplayUnit.shortLabelResId),
-                entryDelayMillis = EntryAnimationDefaults.DELAY_MS
-            )
 
-            HeroStatItem(
-                label = stringResource(R.string.statistics_hero_success_rate),
-                value = uiState.goalSuccessRate,
-                shape = SquircleShape(
-                    topStart = CornerSize(10.dp),
-                    topEnd = CornerSize(10.dp),
-                    bottomStart = CornerSize(10.dp),
-                    bottomEnd = CornerSize(10.dp)
-                ),
-                hapticsEnabled = false,
-                tooltipText = stringResource(R.string.percent_format, uiState.goalSuccessRate.toInt()),
-                formatValue = { it.toInt().toString() },
-                suffix = "%",
-                entryDelayMillis = EntryAnimationDefaults.DELAY_MS
-            )
+            Box(modifier = Modifier.weight(1f)) {
+                HeroStatItem(
+                    label = stringResource(R.string.statistics_label_average_daily_intake),
+                    value = uiState.averageDailyIntake,
+                    shape = SquircleShape(
+                        topStart = CornerSize(20.dp),
+                        topEnd = CornerSize(10.dp),
+                        bottomStart = CornerSize(40.dp),
+                        bottomEnd = CornerSize(10.dp)
+                    ),
+                    hapticsEnabled = false,
+                    tooltipText = VolumeUnitConverter.format(context, uiState.averageDailyIntake, volumeUnit),
+                    formatValue = { VolumeUnitConverter.formatValue(it.toDouble(), averageDailyIntakeDisplayUnit) },
+                    suffix = stringResource(averageDailyIntakeDisplayUnit.shortLabelResId),
+                    entryDelayMillis = EntryAnimationDefaults.DELAY_MS
+                )
+            }
 
-            HeroStatItem(
-                label = stringResource(R.string.statistics_hero_days_tracked),
-                value = uiState.totalTrackedDays.toDouble(),
-                shape = SquircleShape(
-                    topStart = CornerSize(10.dp),
-                    topEnd = CornerSize(20.dp),
-                    bottomStart = CornerSize(10.dp),
-                    bottomEnd = CornerSize(40.dp)
-                ),
-                hapticsEnabled = false,
-                tooltipText = uiState.totalTrackedDays.toString(),
-                formatValue = { NumberFormatters.formatCompactCount(it.toDouble()) },
-                entryDelayMillis = EntryAnimationDefaults.DELAY_MS
-            )
+            Box(modifier = Modifier.weight(1f)) {
+                HeroStatItem(
+                    label = stringResource(R.string.statistics_hero_success_rate),
+                    value = uiState.goalSuccessRate,
+                    shape = SquircleShape(
+                        topStart = CornerSize(10.dp),
+                        topEnd = CornerSize(10.dp),
+                        bottomStart = CornerSize(10.dp),
+                        bottomEnd = CornerSize(10.dp)
+                    ),
+                    hapticsEnabled = false,
+                    tooltipText = stringResource(R.string.percent_format, uiState.goalSuccessRate.toInt()),
+                    formatValue = { it.toInt().toString() },
+                    suffix = "%",
+                    entryDelayMillis = EntryAnimationDefaults.DELAY_MS
+                )
+            }
+
+            Box(modifier = Modifier.weight(1f)) {
+                HeroStatItem(
+                    label = stringResource(R.string.statistics_hero_days_tracked),
+                    value = uiState.totalTrackedDays.toDouble(),
+                    shape = SquircleShape(
+                        topStart = CornerSize(10.dp),
+                        topEnd = CornerSize(20.dp),
+                        bottomStart = CornerSize(10.dp),
+                        bottomEnd = CornerSize(40.dp)
+                    ),
+                    hapticsEnabled = false,
+                    tooltipText = uiState.totalTrackedDays.toString(),
+                    formatValue = { NumberFormatters.formatCompactCount(it.toDouble()) },
+                    entryDelayMillis = EntryAnimationDefaults.DELAY_MS
+                )
+            }
+
         }
     }
 
@@ -395,7 +403,7 @@ private fun resolveBeverageDisplayNames(
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterial3ExpressiveApi::class)
-@Preview(showBackground = true, name = "Statistics Screen")
+@Preview(showBackground = true, name = "Statistics Screen", showSystemUi = false)
 @Composable
 private fun StatisticsScreenPreview() {
     val previewUser = UserProfile(
