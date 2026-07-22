@@ -109,7 +109,13 @@ enum class AppFont(@param:StringRes val labelResId: Int) {
     SYSTEM(R.string.font_system),
     OUTFIT(R.string.font_outfit),
     DM_SANS(R.string.font_dm_sans),
-    JETBRAINS_MONO(R.string.font_jetbrains_mono)
+    JETBRAINS_MONO(R.string.font_jetbrains_mono),
+    BRICOLAGE_GROTESQUE(R.string.font_bricolage_grotesque),
+    DARKER_GROTESQUE(R.string.font_darker_grotesque),
+    DM_SERIF_DISPLAY(R.string.font_dm_serif_display),
+    GEIST(R.string.font_geist),
+    INSTRUMENT_SERIF(R.string.font_instrument_serif),
+    INTER(R.string.font_inter)
 }
 
 @Serializable
